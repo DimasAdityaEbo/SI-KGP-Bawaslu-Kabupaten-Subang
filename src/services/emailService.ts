@@ -22,6 +22,7 @@ export function generateKgbEmailHtml(params: {
   catatan?: string;
   nomorSk?: string;
   tmtKgb?: string;
+  nextKgbJadwal?: string;
 }): string {
   return `
 <!DOCTYPE html>
@@ -72,7 +73,8 @@ export function generateKgbEmailHtml(params: {
           <td>Tanggal Pembaruan</td>
           <td>${new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })} WIB</td>
         </tr>
-        ${params.tmtKgb ? `<tr><td>TMT KGB Baru</td><td>${params.tmtKgb}</td></tr>` : ''}
+        ${params.tmtKgb ? `<tr><td>TMT KGB Disetujui</td><td>${params.tmtKgb}</td></tr>` : ''}
+        ${params.nextKgbJadwal ? `<tr><td>Jadwal KGB Berikutnya (2 Tahun)</td><td><strong style="color: #16a34a;">${params.nextKgbJadwal}</strong></td></tr>` : ''}
         ${params.nomorSk ? `<tr><td>Nomor Surat SK / Rekomendasi</td><td>${params.nomorSk}</td></tr>` : ''}
       </table>
 
@@ -108,6 +110,7 @@ export function generateKgbEmailPlainText(params: {
   catatan?: string;
   nomorSk?: string;
   tmtKgb?: string;
+  nextKgbJadwal?: string;
 }): string {
   return `BADAN PENGAWAS PEMILIHAN UMUM KABUPATEN SUBANG
 Sistem Informasi Kenaikan Gaji Berkala (SI-KGB)
@@ -120,7 +123,7 @@ ${params.message}
 
 Status Terkini: ${params.statusLabel}
 Nomor Registrasi: ${params.noPengajuan}
-${params.tmtKgb ? `TMT KGB Baru: ${params.tmtKgb}\n` : ''}${params.nomorSk ? `Nomor Surat SK / Rekomendasi: ${params.nomorSk}\n` : ''}${params.catatan ? `Catatan Petugas Kepegawaian: "${params.catatan}"\n` : ''}
+${params.tmtKgb ? `TMT KGB Disetujui: ${params.tmtKgb}\n` : ''}${params.nextKgbJadwal ? `Jadwal KGB Berikutnya (2 Tahun): ${params.nextKgbJadwal}\n` : ''}${params.nomorSk ? `Nomor Surat SK / Rekomendasi: ${params.nomorSk}\n` : ''}${params.catatan ? `Catatan Petugas Kepegawaian: "${params.catatan}"\n` : ''}
 Anda dapat memantau status secara langsung atau mengunduh lembar bukti disposisi melalui portal resmi SI-KGB Bawaslu Kabupaten Subang.
 
 Sekretariat Bawaslu Kabupaten Subang
@@ -138,7 +141,8 @@ export function createMailtoUrl(toEmail: string, subject: string, bodyText: stri
 // Main function to dispatch real-time email notifications
 export async function sendKgbStatusEmail(
   pengajuan: PengajuanKGB,
-  actionType: 'dibuat' | 'disetujui' | 'perlu_perbaikan' | 'ditolak'
+  actionType: 'dibuat' | 'disetujui' | 'perlu_perbaikan' | 'ditolak',
+  nextKgbJadwal?: string
 ): Promise<EmailDispatchLog> {
   let subject = '';
   let statusLabel = '';
@@ -157,7 +161,7 @@ export async function sendKgbStatusEmail(
       subject = `[SI-KGB Bawaslu Subang] SELAMAT: Pengajuan KGB Anda Disetujui - ${pengajuan.noPengajuan}`;
       statusLabel = 'Pengajuan Disetujui';
       statusColor = '#16a34a'; // Green
-      message = `Kabar baik! Permohonan Kenaikan Gaji Berkala Anda telah diverifikasi dan <strong>DISETUJUI</strong> oleh Koordinator Sekretariat Bawaslu Kabupaten Subang. Surat Rekomendasi/Pemberitahuan Kenaikan Gaji Berkala telah resmi diterbitkan.`;
+      message = `Kabar baik! Permohonan Kenaikan Gaji Berkala Anda telah diverifikasi dan <strong>DISETUJUI</strong> oleh Koordinator Sekretariat Bawaslu Kabupaten Subang. Surat Keputusan/Rekomendasi KGB resmi telah diterbitkan, dan jadwal KGB Anda berikutnya telah dijadwalkan kembali untuk 2 (dua) tahun mendatang${nextKgbJadwal ? ` (jatuh tempo pada: <strong>${nextKgbJadwal}</strong>)` : ''}.`;
       break;
 
     case 'perlu_perbaikan':
@@ -186,6 +190,7 @@ export async function sendKgbStatusEmail(
     catatan: pengajuan.catatanVerifikator,
     nomorSk: pengajuan.nomorSkKgbDiterbitkan,
     tmtKgb: pengajuan.tmtKgbBaru,
+    nextKgbJadwal,
   });
 
   const emailLog: EmailDispatchLog = {

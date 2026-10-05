@@ -18,9 +18,10 @@ import {
   ExternalLink,
   Copy,
   Check,
+  Calendar,
 } from 'lucide-react';
 import { PengajuanKGB, Pegawai, PengajuanStatus, DokumenLampiran, EmailDispatchLog } from '../../types';
-import { savePengajuan } from '../../services/storage';
+import { savePengajuan, savePegawai } from '../../services/storage';
 import {
   sendKgbStatusEmail,
   generateKgbEmailPlainText,
@@ -71,6 +72,7 @@ export const DaftarPengajuan: React.FC<DaftarPengajuanProps> = ({
     gmailUrl: string;
     mailtoUrl: string;
     updatedPengajuan: PengajuanKGB;
+    nextJadwalKgb?: string;
   } | null>(null);
   const [copiedEmailText, setCopiedEmailText] = useState(false);
 
@@ -116,10 +118,49 @@ export const DaftarPengajuan: React.FC<DaftarPengajuanProps> = ({
             : undefined,
       };
 
-      // 1. Save data safely
+      // 1. Save data pengajuan safely
       await savePengajuan(updated);
 
-      // 2. Dispatch email notification and persist dispatch log
+      // 2. Jika disetujui, perbarui jadwal KGB berikutnya milik pegawai menjadi 2 tahun setelah TMT KGB disetujui!
+      let nextKgbFormatted: string | undefined = undefined;
+      if (newStatus === 'disetujui') {
+        const targetPegawai = pegawaiList.find((p) => p.id === activePengajuan.pegawaiId);
+        if (targetPegawai) {
+          let baseYear: number;
+          let baseMonth: number;
+          let baseDay: number;
+
+          // Ambil acuan dari tmtKgbBaru jika format YYYY-MM-DD valid, jika tidak gunakan tanggal hari ini
+          if (activePengajuan.tmtKgbBaru && activePengajuan.tmtKgbBaru.includes('-')) {
+            const parts = activePengajuan.tmtKgbBaru.split('-').map(Number);
+            baseYear = parts[0];
+            baseMonth = parts[1];
+            baseDay = parts[2] || 1;
+          } else {
+            const now = new Date();
+            baseYear = now.getFullYear();
+            baseMonth = now.getMonth() + 1;
+            baseDay = now.getDate();
+          }
+
+          // Majukan tepat 2 tahun ke depan
+          const nextYear = baseYear + 2;
+          const nextMonthStr = String(baseMonth).padStart(2, '0');
+          const nextDayStr = String(baseDay).padStart(2, '0');
+          nextKgbFormatted = `${nextYear}-${nextMonthStr}-${nextDayStr}`;
+
+          const updatedPegawai: Pegawai = {
+            ...targetPegawai,
+            jadwalKgbBerikutnya: nextKgbFormatted,
+            gajiPokokTerakhir: activePengajuan.gajiBaruEstimasi || targetPegawai.gajiPokokTerakhir,
+            updatedAt: new Date().toISOString(),
+          };
+
+          await savePegawai(updatedPegawai);
+        }
+      }
+
+      // 3. Dispatch email notification and persist dispatch log
       const actionType =
         newStatus === 'disetujui'
           ? 'disetujui'
@@ -129,9 +170,9 @@ export const DaftarPengajuan: React.FC<DaftarPengajuanProps> = ({
           ? 'ditolak'
           : 'dibuat';
 
-      const emailLog = await sendKgbStatusEmail(updated, actionType);
+      const emailLog = await sendKgbStatusEmail(updated, actionType, nextKgbFormatted);
 
-      // 3. Prepare direct Gmail and mailto dispatch links
+      // 4. Prepare direct Gmail and mailto dispatch links
       const statusLabels: Record<string, string> = {
         disetujui: 'Disetujui (SK Terbit)',
         perlu_perbaikan: 'Perlu Perbaikan Dokumen',
@@ -149,6 +190,7 @@ export const DaftarPengajuan: React.FC<DaftarPengajuanProps> = ({
         catatan: updated.catatanVerifikator,
         nomorSk: updated.nomorSkKgbDiterbitkan,
         tmtKgb: updated.tmtKgbBaru,
+        nextKgbJadwal: nextKgbFormatted,
       });
 
       const gmailUrl = createGmailComposeUrl(updated.emailPemohon, emailLog.subject, plainText);
@@ -157,7 +199,7 @@ export const DaftarPengajuan: React.FC<DaftarPengajuanProps> = ({
       setActivePengajuan(updated);
       onRefreshData();
 
-      // 4. Open Email Success Confirmation Dialog
+      // 5. Open Email Success Confirmation Dialog
       setEmailSuccessModal({
         isOpen: true,
         emailLog,
@@ -165,6 +207,7 @@ export const DaftarPengajuan: React.FC<DaftarPengajuanProps> = ({
         gmailUrl,
         mailtoUrl,
         updatedPengajuan: updated,
+        nextJadwalKgb: nextKgbFormatted,
       });
     } catch (err: any) {
       console.error('Error saving verification:', err);
@@ -738,6 +781,18 @@ export const DaftarPengajuan: React.FC<DaftarPengajuanProps> = ({
                     {emailSuccessModal.emailLog.toName}
                   </span>
                 </div>
+
+                {emailSuccessModal.nextJadwalKgb && (
+                  <div className="flex items-center justify-between border-b border-slate-200 pb-2 bg-emerald-50/70 -mx-4 px-4 py-2 rounded-md">
+                    <span className="text-emerald-900 font-semibold flex items-center gap-1.5">
+                      <Calendar className="h-3.5 w-3.5 text-emerald-700" />
+                      Jadwal KGB Berikutnya Diperbarui:
+                    </span>
+                    <span className="font-mono font-bold text-xs text-emerald-950 bg-emerald-100 px-2 py-0.5 rounded border border-emerald-300">
+                      {emailSuccessModal.nextJadwalKgb} (2 Tahun Mendatang)
+                    </span>
+                  </div>
+                )}
 
                 <div>
                   <span className="text-slate-500 font-medium block mb-0.5">Subjek Email:</span>

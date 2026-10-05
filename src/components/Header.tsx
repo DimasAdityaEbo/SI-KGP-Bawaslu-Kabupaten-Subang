@@ -51,36 +51,38 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
       </div>
 
-      {/* Zone 2: System Status & Integration Badges */}
-      <div className="hidden items-center gap-2 lg:flex">
-        {/* Supabase Status Trigger */}
-        <button
-          onClick={onOpenSupabaseModal}
-          title="Klik untuk membuka Konfigurasi Database Supabase"
-          className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50/80 px-2.5 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-100"
-        >
-          <span
-            className={`h-2 w-2 rounded-full ${
-              supabaseConnected ? 'bg-emerald-500 ring-2 ring-emerald-200' : 'bg-amber-500 ring-2 ring-amber-200'
-            }`}
-          />
-          <Database className="h-3.5 w-3.5 text-slate-500" />
-          <span>{supabaseConnected ? 'Supabase Aktif' : 'Penyimpanan Sinkron'}</span>
-        </button>
+      {/* Zone 2: System Status & Integration Badges (Admin Only) */}
+      {currentUser.role === 'admin' && (
+        <div className="hidden items-center gap-2 lg:flex">
+          {/* Supabase Status Trigger */}
+          <button
+            onClick={onOpenSupabaseModal}
+            title="Klik untuk membuka Konfigurasi Database Supabase"
+            className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50/80 px-2.5 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-100"
+          >
+            <span
+              className={`h-2 w-2 rounded-full ${
+                supabaseConnected ? 'bg-emerald-500 ring-2 ring-emerald-200' : 'bg-amber-500 ring-2 ring-amber-200'
+              }`}
+            />
+            <Database className="h-3.5 w-3.5 text-slate-500" />
+            <span>{supabaseConnected ? 'Supabase Aktif' : 'Penyimpanan Sinkron'}</span>
+          </button>
 
-        {/* Real-time Email Logs Trigger */}
-        <button
-          onClick={onOpenEmailLogs}
-          title="Lihat Log Notifikasi Email Real-time Bawaslu Subang"
-          className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50/80 px-2.5 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-100"
-        >
-          <Mail className="h-3.5 w-3.5 text-sky-600" />
-          <span>Log Email</span>
-          <span className="font-mono-numbers rounded bg-sky-100 px-1.5 py-0.2 text-[10px] font-bold text-sky-800">
-            {totalEmailsSent}
-          </span>
-        </button>
-      </div>
+          {/* Real-time Email Logs Trigger */}
+          <button
+            onClick={onOpenEmailLogs}
+            title="Lihat Log Notifikasi Email Real-time Bawaslu Subang"
+            className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50/80 px-2.5 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-100"
+          >
+            <Mail className="h-3.5 w-3.5 text-sky-600" />
+            <span>Log Email</span>
+            <span className="font-mono-numbers rounded bg-sky-100 px-1.5 py-0.2 text-[10px] font-bold text-sky-800">
+              {totalEmailsSent}
+            </span>
+          </button>
+        </div>
+      )}
 
       {/* Zone 3: User Info, Ubah Password, Notifications, Logout */}
       <div className="flex items-center gap-2 sm:gap-3">

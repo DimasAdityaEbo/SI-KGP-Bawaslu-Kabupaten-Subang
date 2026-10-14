@@ -15,6 +15,7 @@ import {
   getSavedSupabaseConfig,
   saveSupabaseConfig,
   resetSupabaseClient,
+  normalizeSupabaseUrl,
   SUPABASE_SQL_SCHEMA,
 } from '../services/supabase';
 import { createClient } from '@supabase/supabase-js';
@@ -59,7 +60,10 @@ export const SupabaseModal: React.FC<SupabaseModalProps> = ({
   if (!isOpen) return null;
 
   const handleTestConnection = async () => {
-    if (!url.trim() || !anonKey.trim()) {
+    const cleanUrl = normalizeSupabaseUrl(url);
+    const cleanKey = anonKey.trim();
+
+    if (!cleanUrl || !cleanKey) {
       setTestResult({
         success: false,
         message: 'Harap masukkan Supabase URL dan Anon Key terlebih dahulu.',
@@ -71,7 +75,7 @@ export const SupabaseModal: React.FC<SupabaseModalProps> = ({
     setTestResult(null);
 
     try {
-      const testClient = createClient(url.trim(), anonKey.trim());
+      const testClient = createClient(cleanUrl, cleanKey);
       // Test querying the auth or health check
       const { data, error } = await testClient.from('pegawai').select('id').limit(1);
 
@@ -106,12 +110,15 @@ export const SupabaseModal: React.FC<SupabaseModalProps> = ({
   };
 
   const handleSave = () => {
-    saveSupabaseConfig(url, anonKey);
+    const cleanUrl = normalizeSupabaseUrl(url);
+    const cleanKey = anonKey.trim();
+    saveSupabaseConfig(cleanUrl, cleanKey);
+    setUrl(cleanUrl);
     resetSupabaseClient();
     onConfigChanged();
     setTestResult({
       success: true,
-      message: 'Konfigurasi Supabase berhasil disimpan!',
+      message: 'Konfigurasi Supabase berhasil disimpan dan terhubung!',
     });
   };
 
@@ -122,7 +129,10 @@ export const SupabaseModal: React.FC<SupabaseModalProps> = ({
   };
 
   const handleSyncSeedToSupabase = async () => {
-    if (!url.trim() || !anonKey.trim()) {
+    const cleanUrl = normalizeSupabaseUrl(url);
+    const cleanKey = anonKey.trim();
+
+    if (!cleanUrl || !cleanKey) {
       setSyncResult('Harap simpan URL dan Anon Key Supabase terlebih dahulu.');
       return;
     }
@@ -131,7 +141,7 @@ export const SupabaseModal: React.FC<SupabaseModalProps> = ({
     setSyncResult(null);
 
     try {
-      const client = createClient(url.trim(), anonKey.trim());
+      const client = createClient(cleanUrl, cleanKey);
 
       // 1. Sync Pegawai
       const pegawaiPayload = allPegawai.map((p) => ({

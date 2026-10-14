@@ -121,6 +121,12 @@ export const RiwayatPengajuan: React.FC<RiwayatPengajuanProps> = ({
             <Clock className="h-3 w-3" /> Menunggu Verifikasi
           </span>
         );
+      case 'dikirim_ke_provinsi':
+        return (
+          <span className="inline-flex items-center gap-1 rounded bg-indigo-50 px-2.5 py-1 text-[11px] font-semibold text-indigo-800 border border-indigo-200">
+            <Send className="h-3 w-3 text-indigo-600" /> Sudah Dikirim ke Bawaslu Provinsi
+          </span>
+        );
       case 'perlu_perbaikan':
         return (
           <span className="inline-flex items-center gap-1 rounded bg-orange-50 px-2.5 py-1 text-[11px] font-semibold text-orange-800 border border-orange-200">
@@ -244,52 +250,97 @@ export const RiwayatPengajuan: React.FC<RiwayatPengajuanProps> = ({
               {/* Stepper Progress */}
               <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-4">
                 <p className="font-bold text-slate-900 mb-3 text-center">Tahapan Verifikasi Berkas</p>
-                <div className="grid grid-cols-3 gap-2 text-center">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
+                  {/* Step 1 */}
                   <div className="flex flex-col items-center">
                     <div className="h-7 w-7 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold">
                       ✓
                     </div>
-                    <span className="font-semibold text-slate-900 mt-1">Diajukan</span>
+                    <span className="font-semibold text-slate-900 mt-1">1. Diajukan</span>
                     <span className="text-[10px] text-slate-500">
                       {new Date(activePengajuan.tanggalPengajuan).toLocaleDateString('id-ID')}
                     </span>
                   </div>
 
+                  {/* Step 2 */}
                   <div className="flex flex-col items-center">
                     <div
                       className={`h-7 w-7 rounded-full flex items-center justify-center font-bold ${
-                        activePengajuan.status === 'disetujui' || activePengajuan.status === 'perlu_perbaikan'
+                        activePengajuan.status === 'disetujui' || activePengajuan.status === 'dikirim_ke_provinsi'
                           ? 'bg-emerald-600 text-white'
+                          : activePengajuan.status === 'perlu_perbaikan'
+                          ? 'bg-orange-500 text-white'
+                          : activePengajuan.status === 'ditolak'
+                          ? 'bg-red-600 text-white'
                           : 'bg-amber-500 text-white animate-pulse'
                       }`}
                     >
-                      2
+                      {activePengajuan.status === 'disetujui' || activePengajuan.status === 'dikirim_ke_provinsi' ? '✓' : '2'}
                     </div>
-                    <span className="font-semibold text-slate-900 mt-1">Verifikasi Berkas</span>
-                    <span className="text-[10px] text-slate-500">Staf Kepegawaian</span>
+                    <span className="font-semibold text-slate-900 mt-1">2. Verifikasi Berkas</span>
+                    <span className="text-[10px] text-slate-500">Staf Bawaslu Subang</span>
                   </div>
 
+                  {/* Step 3: Sudah Dikirim ke Bawaslu Provinsi */}
                   <div className="flex flex-col items-center">
                     <div
                       className={`h-7 w-7 rounded-full flex items-center justify-center font-bold ${
                         activePengajuan.status === 'disetujui'
                           ? 'bg-emerald-600 text-white'
-                          : activePengajuan.status === 'perlu_perbaikan'
-                          ? 'bg-orange-500 text-white'
+                          : activePengajuan.status === 'dikirim_ke_provinsi'
+                          ? 'bg-indigo-600 text-white animate-pulse ring-2 ring-indigo-200'
                           : 'bg-slate-200 text-slate-500'
                       }`}
                     >
-                      3
+                      {activePengajuan.status === 'disetujui' ? '✓' : '3'}
                     </div>
-                    <span className="font-semibold text-slate-900 mt-1">Hasil Penetapan</span>
+                    <span className="font-semibold text-slate-900 mt-1">3. Dikirim ke Provinsi</span>
+                    <span className="text-[10px] text-slate-500">
+                      {activePengajuan.status === 'dikirim_ke_provinsi'
+                        ? 'Sudah Dikirim ke Provinsi'
+                        : activePengajuan.status === 'disetujui'
+                        ? 'Selesai di Provinsi'
+                        : 'Bawaslu Jawa Barat'}
+                    </span>
+                  </div>
+
+                  {/* Step 4 */}
+                  <div className="flex flex-col items-center">
+                    <div
+                      className={`h-7 w-7 rounded-full flex items-center justify-center font-bold ${
+                        activePengajuan.status === 'disetujui'
+                          ? 'bg-emerald-600 text-white'
+                          : activePengajuan.status === 'ditolak'
+                          ? 'bg-red-600 text-white'
+                          : 'bg-slate-200 text-slate-500'
+                      }`}
+                    >
+                      {activePengajuan.status === 'disetujui' ? '✓' : '4'}
+                    </div>
+                    <span className="font-semibold text-slate-900 mt-1">4. Hasil Penetapan</span>
                     <span className="text-[10px] text-slate-500">
                       {activePengajuan.status === 'disetujui'
                         ? 'SK KGB Terbit'
-                        : activePengajuan.status.replace('_', ' ').toUpperCase()}
+                        : activePengajuan.status === 'ditolak'
+                        ? 'Ditolak'
+                        : 'Penerbitan SK'}
                     </span>
                   </div>
                 </div>
               </div>
+
+              {/* Banner info khusus bila berkas sudah dikirim ke provinsi */}
+              {activePengajuan.status === 'dikirim_ke_provinsi' && (
+                <div className="rounded-lg bg-indigo-50 border border-indigo-200 p-3.5 text-xs text-indigo-950 flex items-start gap-2.5">
+                  <Send className="h-4 w-4 text-indigo-600 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-bold">Status: Berkas Sudah Dikirim ke Bawaslu Provinsi Jawa Barat</p>
+                    <p className="text-[11px] text-indigo-800 mt-0.5 leading-relaxed">
+                      Seluruh berkas persyaratan telah selesai diverifikasi oleh Sub Bagian Administrasi &amp; Kepegawaian Bawaslu Kabupaten Subang dan <strong>sudah resmi dikirimkan ke Bawaslu Provinsi Jawa Barat</strong> untuk proses penerbitan surat rekomendasi / penetapan kenaikan gaji berkala.
+                    </p>
+                  </div>
+                </div>
+              )}
 
               {/* Status Banner */}
               <div className="flex items-center justify-between p-3.5 rounded-lg border border-slate-200 bg-white">

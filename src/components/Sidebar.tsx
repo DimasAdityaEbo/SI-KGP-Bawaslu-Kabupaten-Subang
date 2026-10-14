@@ -14,6 +14,9 @@ import {
   Mail,
   ChevronRight,
   KeyRound,
+  UserCheck,
+  FileCode,
+  Stamp,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -24,6 +27,8 @@ interface SidebarProps {
   onOpenSupabaseModal: () => void;
   onOpenEmailLogs: () => void;
   onOpenUbahPassword: () => void;
+  onOpenKopSuratModal?: () => void;
+  onOpenTtdCapModal?: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -34,6 +39,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onOpenSupabaseModal,
   onOpenEmailLogs,
   onOpenUbahPassword,
+  onOpenKopSuratModal,
+  onOpenTtdCapModal,
 }) => {
   const adminMenuItems = [
     {
@@ -66,6 +73,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
       icon: BarChart3,
       badge: null,
     },
+    {
+      id: 'template',
+      label: 'Template Dokumen',
+      icon: FileCode,
+      badge: null,
+    },
   ];
 
   const pegawaiMenuItems = [
@@ -73,6 +86,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
       id: 'dashboard',
       label: 'Dashboard Pegawai',
       icon: LayoutDashboard,
+      badge: null,
+    },
+    {
+      id: 'profil',
+      label: 'Profil & Data Diri',
+      icon: UserCheck,
       badge: null,
     },
     {
@@ -192,6 +211,30 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 </div>
                 <ChevronRight className="h-3.5 w-3.5 text-slate-400" />
               </button>
+              {onOpenKopSuratModal && (
+                <button
+                  onClick={onOpenKopSuratModal}
+                  className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <Building2 className="h-4 w-4 text-amber-600" />
+                    <span>Pengaturan Kop Surat</span>
+                  </div>
+                  <ChevronRight className="h-3.5 w-3.5 text-slate-400" />
+                </button>
+              )}
+              {onOpenTtdCapModal && (
+                <button
+                  onClick={onOpenTtdCapModal}
+                  className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <Stamp className="h-4 w-4 text-purple-600" />
+                    <span>Tanda Tangan &amp; Cap</span>
+                  </div>
+                  <ChevronRight className="h-3.5 w-3.5 text-slate-400" />
+                </button>
+              )}
             </div>
           </div>
         )}

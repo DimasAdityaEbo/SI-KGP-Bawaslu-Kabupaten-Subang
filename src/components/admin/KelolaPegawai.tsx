@@ -17,6 +17,7 @@ import {
   KeyRound,
   Copy,
   CheckCircle2,
+  Info,
 } from 'lucide-react';
 import { Pegawai, User } from '../../types';
 import { DIVISI_OPTIONS, AGAMA_OPTIONS, GOLONGAN_OPTIONS } from '../../data/seedData';
@@ -69,13 +70,13 @@ export const KelolaPegawai: React.FC<KelolaPegawaiProps> = ({
   } | null>(null);
   const [copiedInfo, setCopiedInfo] = useState(false);
 
-  // Form State
+  // Form State: Hanya Nama dan NIP yang wajib bagi Admin
   const initialForm: Partial<Pegawai> = {
     nama: '',
-    tempatLahir: '',
-    tanggalLahir: '1992-01-01',
-    jabatan: '',
     nip: '',
+    tempatLahir: '',
+    tanggalLahir: '',
+    jabatan: '',
     jenisKelamin: 'Laki-laki',
     bagianDivisi: DIVISI_OPTIONS[0],
     noHp: '',
@@ -83,10 +84,10 @@ export const KelolaPegawai: React.FC<KelolaPegawaiProps> = ({
     alamatRumah: '',
     email: '',
     agama: 'Islam',
-    tanggalPelantikan: '2020-01-01',
-    jadwalKgbBerikutnya: '2026-10-30',
-    gajiPokokTerakhir: 3800000,
-    golonganPangkat: 'Penata Muda / III/a',
+    tanggalPelantikan: '',
+    jadwalKgbBerikutnya: '',
+    gajiPokokTerakhir: 0,
+    golonganPangkat: GOLONGAN_OPTIONS[4],
     pangkatTerakhir: 'Penata Muda',
   };
 
@@ -113,28 +114,42 @@ export const KelolaPegawai: React.FC<KelolaPegawaiProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!formData.nama?.trim() || !formData.nip?.trim()) {
+      alert('Nama Pegawai dan NIP wajib diisi oleh Admin!');
+      return;
+    }
+
     setIsSaving(true);
     try {
       const isNew = !selectedPegawai;
+      const currentUsers = await getUsersList();
+      const existingUsernames = currentUsers.map((u) => u.username.toLowerCase());
+      const username = generateUsernameFromNama(formData.nama.trim(), existingUsernames);
+
+      // Default fallback jika data opsional tidak diisi admin
+      const emailValue = formData.email?.trim() || `${username}@bawaslu-subang.go.id`;
+      const nextKgbDefault = new Date(Date.now() + 730 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      const nextKgbValue = formData.jadwalKgbBerikutnya?.trim() || nextKgbDefault;
+
       const payload: Pegawai = {
         id: selectedPegawai?.id || `peg-${Date.now()}`,
-        nama: formData.nama || '',
-        tempatLahir: formData.tempatLahir || '',
+        nama: formData.nama.trim(),
+        nip: formData.nip.trim(),
+        tempatLahir: formData.tempatLahir?.trim() || '',
         tanggalLahir: formData.tanggalLahir || '',
-        jabatan: formData.jabatan || '',
-        nip: formData.nip || '',
-        jenisKelamin: formData.jenisKelamin as 'Laki-laki' | 'Perempuan',
-        bagianDivisi: formData.bagianDivisi || '',
-        noHp: formData.noHp || '',
-        alamatKantor: formData.alamatKantor || '',
-        alamatRumah: formData.alamatRumah || '',
-        email: formData.email || '',
+        jabatan: formData.jabatan?.trim() || 'Staf / Pegawai',
+        jenisKelamin: (formData.jenisKelamin as 'Laki-laki' | 'Perempuan') || 'Laki-laki',
+        bagianDivisi: formData.bagianDivisi || DIVISI_OPTIONS[0],
+        noHp: formData.noHp?.trim() || '',
+        alamatKantor: formData.alamatKantor?.trim() || 'Jl. Veteran No. 12, Dangdeur, Kec. Subang, Kabupaten Subang, Jawa Barat 41211',
+        alamatRumah: formData.alamatRumah?.trim() || '',
+        email: emailValue,
         agama: formData.agama || 'Islam',
         tanggalPelantikan: formData.tanggalPelantikan || '',
-        jadwalKgbBerikutnya: formData.jadwalKgbBerikutnya || '',
+        jadwalKgbBerikutnya: nextKgbValue,
         gajiPokokTerakhir: Number(formData.gajiPokokTerakhir) || 0,
-        golonganPangkat: formData.golonganPangkat || '',
-        pangkatTerakhir: formData.pangkatTerakhir || '',
+        golonganPangkat: formData.golonganPangkat || GOLONGAN_OPTIONS[4],
+        pangkatTerakhir: formData.pangkatTerakhir || 'Penata Muda',
         createdAt: selectedPegawai?.createdAt || new Date().toISOString(),
       };
 
@@ -445,10 +460,21 @@ export const KelolaPegawai: React.FC<KelolaPegawaiProps> = ({
             {/* Form */}
             <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-4 text-xs">
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                {/* Info guidance banner */}
+                <div className="rounded-lg bg-sky-50 border border-sky-200 p-3 text-sky-950 text-xs flex items-start gap-2.5 sm:col-span-2">
+                  <Info className="h-4 w-4 text-sky-600 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-bold">Ketentuan Pengisian Pegawai Baru:</p>
+                    <p className="text-[11px] text-sky-800 mt-0.5 leading-relaxed">
+                      Admin <strong>hanya wajib mengisi Nama dan NIP</strong>. Semua data kepegawaian lainnya bersifat opsional dan dapat diisi/dilengkapi secara mandiri oleh pegawai saat login ke akunnya masing-masing.
+                    </p>
+                  </div>
+                </div>
+
                 {/* Nama Pegawai */}
                 <div className="sm:col-span-2">
                   <label className="block font-semibold text-slate-800 mb-1">
-                    Nama Pegawai (Lengkap dengan Gelar) *
+                    Nama Pegawai (Lengkap dengan Gelar) <span className="text-red-600 font-bold">* (Wajib diisi Admin)</span>
                   </label>
                   <input
                     type="text"
@@ -463,7 +489,7 @@ export const KelolaPegawai: React.FC<KelolaPegawaiProps> = ({
                 {/* NIP */}
                 <div>
                   <label className="block font-semibold text-slate-800 mb-1">
-                    NIP / NIK *
+                    NIP / NIK <span className="text-red-600 font-bold">* (Wajib diisi Admin - Password Awal)</span>
                   </label>
                   <input
                     type="text"
@@ -473,12 +499,15 @@ export const KelolaPegawai: React.FC<KelolaPegawaiProps> = ({
                     placeholder="199206142019031004"
                     className="w-full rounded-lg border border-slate-200 px-3 py-2 font-mono text-xs text-slate-900 focus:border-slate-900 focus:outline-none"
                   />
+                  <p className="mt-1 text-[10px] text-slate-400">
+                    NIP ini otomatis menjadi password awal akun pegawai.
+                  </p>
                 </div>
 
                 {/* Jenis Kelamin */}
                 <div>
                   <label className="block font-semibold text-slate-800 mb-1">
-                    Jenis Kelamin *
+                    Jenis Kelamin <span className="text-slate-400 font-normal">(Opsional)</span>
                   </label>
                   <select
                     value={formData.jenisKelamin || 'Laki-laki'}
@@ -493,11 +522,10 @@ export const KelolaPegawai: React.FC<KelolaPegawaiProps> = ({
                 {/* Tempat Lahir */}
                 <div>
                   <label className="block font-semibold text-slate-800 mb-1">
-                    Tempat Lahir *
+                    Tempat Lahir <span className="text-slate-400 font-normal">(Opsional)</span>
                   </label>
                   <input
                     type="text"
-                    required
                     value={formData.tempatLahir || ''}
                     onChange={(e) => setFormData({ ...formData, tempatLahir: e.target.value })}
                     placeholder="Subang"
@@ -508,11 +536,10 @@ export const KelolaPegawai: React.FC<KelolaPegawaiProps> = ({
                 {/* Tanggal Lahir */}
                 <div>
                   <label className="block font-semibold text-slate-800 mb-1">
-                    Tanggal Lahir *
+                    Tanggal Lahir <span className="text-slate-400 font-normal">(Opsional)</span>
                   </label>
                   <input
                     type="date"
-                    required
                     value={formData.tanggalLahir || ''}
                     onChange={(e) => setFormData({ ...formData, tanggalLahir: e.target.value })}
                     className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-900 focus:border-slate-900 focus:outline-none"
@@ -522,11 +549,10 @@ export const KelolaPegawai: React.FC<KelolaPegawaiProps> = ({
                 {/* Jabatan */}
                 <div>
                   <label className="block font-semibold text-slate-800 mb-1">
-                    Jabatan *
+                    Jabatan <span className="text-slate-400 font-normal">(Opsional / Dapat diisi pegawai)</span>
                   </label>
                   <input
                     type="text"
-                    required
                     value={formData.jabatan || ''}
                     onChange={(e) => setFormData({ ...formData, jabatan: e.target.value })}
                     placeholder="Analis Kepegawaian Pertama"
@@ -537,7 +563,7 @@ export const KelolaPegawai: React.FC<KelolaPegawaiProps> = ({
                 {/* Bagian / Divisi */}
                 <div>
                   <label className="block font-semibold text-slate-800 mb-1">
-                    Bagian / Divisi *
+                    Bagian / Divisi <span className="text-slate-400 font-normal">(Opsional)</span>
                   </label>
                   <select
                     value={formData.bagianDivisi || DIVISI_OPTIONS[0]}
@@ -555,7 +581,7 @@ export const KelolaPegawai: React.FC<KelolaPegawaiProps> = ({
                 {/* Pangkat / Golongan */}
                 <div>
                   <label className="block font-semibold text-slate-800 mb-1">
-                    Golongan Pangkat
+                    Golongan Pangkat <span className="text-slate-400 font-normal">(Opsional)</span>
                   </label>
                   <select
                     value={formData.golonganPangkat || GOLONGAN_OPTIONS[4]}
@@ -573,7 +599,7 @@ export const KelolaPegawai: React.FC<KelolaPegawaiProps> = ({
                 {/* Agama */}
                 <div>
                   <label className="block font-semibold text-slate-800 mb-1">
-                    Agama *
+                    Agama <span className="text-slate-400 font-normal">(Opsional)</span>
                   </label>
                   <select
                     value={formData.agama || 'Islam'}
@@ -591,11 +617,10 @@ export const KelolaPegawai: React.FC<KelolaPegawaiProps> = ({
                 {/* Tanggal Pelantikan */}
                 <div>
                   <label className="block font-semibold text-slate-800 mb-1">
-                    Tanggal Pelantikan *
+                    Tanggal Pelantikan <span className="text-slate-400 font-normal">(Opsional)</span>
                   </label>
                   <input
                     type="date"
-                    required
                     value={formData.tanggalPelantikan || ''}
                     onChange={(e) => setFormData({ ...formData, tanggalPelantikan: e.target.value })}
                     className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-900 focus:border-slate-900 focus:outline-none"
@@ -605,28 +630,26 @@ export const KelolaPegawai: React.FC<KelolaPegawaiProps> = ({
                 {/* Jadwal Pengajuan Kenaikan Gaji Berkala (KGB) */}
                 <div className="rounded-lg bg-amber-50/70 p-3 border border-amber-200">
                   <label className="block font-bold text-amber-950 mb-1">
-                    Jadwal Kenaikan Gaji Berkala (TMT KGB Berikutnya) *
+                    Jadwal Kenaikan Gaji Berkala (TMT KGB Berikutnya) <span className="text-slate-500 font-normal">(Opsional)</span>
                   </label>
                   <input
                     type="date"
-                    required
                     value={formData.jadwalKgbBerikutnya || ''}
                     onChange={(e) => setFormData({ ...formData, jadwalKgbBerikutnya: e.target.value })}
                     className="w-full rounded-lg border border-amber-300 bg-white px-3 py-1.5 text-xs text-slate-900 focus:border-amber-600 focus:outline-none"
                   />
                   <p className="mt-1 text-[10px] text-amber-800">
-                    Sistem akan memunculkan alarm pengingat jika tanggal ini jatuh dalam &lt; 30 hari.
+                    Jika dikosongkan, sistem akan mengotomatiskan 2 tahun dari sekarang atau dapat diisi mandiri oleh pegawai.
                   </p>
                 </div>
 
                 {/* No HP */}
                 <div>
                   <label className="block font-semibold text-slate-800 mb-1">
-                    No. HP / WhatsApp *
+                    No. HP / WhatsApp <span className="text-slate-400 font-normal">(Opsional / Dapat diisi pegawai)</span>
                   </label>
                   <input
                     type="text"
-                    required
                     value={formData.noHp || ''}
                     onChange={(e) => setFormData({ ...formData, noHp: e.target.value })}
                     placeholder="081223456789"
@@ -637,11 +660,10 @@ export const KelolaPegawai: React.FC<KelolaPegawaiProps> = ({
                 {/* Email */}
                 <div>
                   <label className="block font-semibold text-slate-800 mb-1">
-                    Email Resmi Pegawai *
+                    Email Resmi Pegawai <span className="text-slate-400 font-normal">(Opsional / Dapat diisi pegawai)</span>
                   </label>
                   <input
                     type="email"
-                    required
                     value={formData.email || ''}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                     placeholder="pegawai@bawaslu-subang.go.id"
@@ -652,11 +674,10 @@ export const KelolaPegawai: React.FC<KelolaPegawaiProps> = ({
                 {/* Alamat Kantor */}
                 <div className="sm:col-span-2">
                   <label className="block font-semibold text-slate-800 mb-1">
-                    Alamat Kantor *
+                    Alamat Kantor <span className="text-slate-400 font-normal">(Opsional)</span>
                   </label>
                   <input
                     type="text"
-                    required
                     value={formData.alamatKantor || ''}
                     onChange={(e) => setFormData({ ...formData, alamatKantor: e.target.value })}
                     className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-900 focus:border-slate-900 focus:outline-none"
@@ -666,7 +687,7 @@ export const KelolaPegawai: React.FC<KelolaPegawaiProps> = ({
                 {/* Alamat Rumah */}
                 <div className="sm:col-span-2">
                   <label className="block font-semibold text-slate-800 mb-1">
-                    Alamat Rumah Lengkap
+                    Alamat Rumah Lengkap <span className="text-slate-400 font-normal">(Opsional / Dapat diisi pegawai)</span>
                   </label>
                   <textarea
                     rows={2}

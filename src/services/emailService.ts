@@ -141,7 +141,7 @@ export function createMailtoUrl(toEmail: string, subject: string, bodyText: stri
 // Main function to dispatch real-time email notifications
 export async function sendKgbStatusEmail(
   pengajuan: PengajuanKGB,
-  actionType: 'dibuat' | 'disetujui' | 'perlu_perbaikan' | 'ditolak',
+  actionType: 'dibuat' | 'disetujui' | 'perlu_perbaikan' | 'ditolak' | 'dikirim_ke_provinsi',
   nextKgbJadwal?: string
 ): Promise<EmailDispatchLog> {
   let subject = '';
@@ -155,6 +155,13 @@ export async function sendKgbStatusEmail(
       statusLabel = 'Menunggu Verifikasi Berkas';
       statusColor = '#0284c7'; // Sky/Blue
       message = `Permohonan Kenaikan Gaji Berkala (KGB) Anda telah berhasil didaftarkan ke dalam sistem. Staf Sub Bagian Administrasi & Kepegawaian akan segera melakukan verifikasi kelengkapan berkas Anda.`;
+      break;
+
+    case 'dikirim_ke_provinsi':
+      subject = `[SI-KGB Bawaslu Subang] Berkas Pengajuan KGB Dikirim ke Bawaslu Provinsi - ${pengajuan.noPengajuan}`;
+      statusLabel = 'Berkas Dikirim ke Bawaslu Provinsi';
+      statusColor = '#4f46e5'; // Indigo
+      message = `Permohonan Kenaikan Gaji Berkala (KGB) Anda telah diverifikasi oleh Sekretariat Bawaslu Kabupaten Subang dan <strong>saat ini berkas usulan sedang dikirim / diproses ke Bawaslu Provinsi Jawa Barat</strong> untuk penerbitan surat rekomendasi / penetapan kenaikan gaji berkala.`;
       break;
 
     case 'disetujui':

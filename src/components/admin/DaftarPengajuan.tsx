@@ -164,6 +164,8 @@ export const DaftarPengajuan: React.FC<DaftarPengajuanProps> = ({
       const actionType =
         newStatus === 'disetujui'
           ? 'disetujui'
+          : newStatus === 'dikirim_ke_provinsi'
+          ? 'dikirim_ke_provinsi'
           : newStatus === 'perlu_perbaikan'
           ? 'perlu_perbaikan'
           : newStatus === 'ditolak'
@@ -175,6 +177,7 @@ export const DaftarPengajuan: React.FC<DaftarPengajuanProps> = ({
       // 4. Prepare direct Gmail and mailto dispatch links
       const statusLabels: Record<string, string> = {
         disetujui: 'Disetujui (SK Terbit)',
+        dikirim_ke_provinsi: 'Berkas Sedang Dikirim ke Bawaslu Provinsi',
         perlu_perbaikan: 'Perlu Perbaikan Dokumen',
         ditolak: 'Ditolak',
         menunggu_verifikasi: 'Menunggu Verifikasi',
@@ -239,6 +242,12 @@ export const DaftarPengajuan: React.FC<DaftarPengajuanProps> = ({
         return (
           <span className="inline-flex items-center gap-1 rounded bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-amber-800 border border-amber-200">
             <Clock className="h-3 w-3" /> Menunggu Verifikasi
+          </span>
+        );
+      case 'dikirim_ke_provinsi':
+        return (
+          <span className="inline-flex items-center gap-1 rounded bg-indigo-50 px-2.5 py-1 text-[11px] font-semibold text-indigo-800 border border-indigo-200">
+            <Send className="h-3 w-3 text-indigo-600" /> Berkas Dikirim ke Bawaslu Provinsi
           </span>
         );
       case 'perlu_perbaikan':
@@ -311,6 +320,7 @@ export const DaftarPengajuan: React.FC<DaftarPengajuanProps> = ({
           >
             <option value="ALL">Semua Status Pengajuan</option>
             <option value="menunggu_verifikasi">Menunggu Verifikasi</option>
+            <option value="dikirim_ke_provinsi">Dikirim ke Bawaslu Provinsi</option>
             <option value="perlu_perbaikan">Perlu Perbaikan</option>
             <option value="disetujui">Disetujui</option>
             <option value="ditolak">Ditolak</option>
@@ -580,7 +590,7 @@ export const DaftarPengajuan: React.FC<DaftarPengajuanProps> = ({
                   Keputusan Verifikasi & Penetapan Status
                 </h4>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                   <label
                     className={`cursor-pointer rounded-lg border p-3 flex flex-col items-center justify-center text-center transition ${
                       newStatus === 'disetujui'
@@ -598,6 +608,25 @@ export const DaftarPengajuan: React.FC<DaftarPengajuanProps> = ({
                     />
                     <CheckCircle2 className="h-5 w-5 text-emerald-600 mb-1" />
                     <span>Setujui Pengajuan</span>
+                  </label>
+
+                  <label
+                    className={`cursor-pointer rounded-lg border p-3 flex flex-col items-center justify-center text-center transition ${
+                      newStatus === 'dikirim_ke_provinsi'
+                        ? 'border-indigo-600 bg-indigo-50 text-indigo-950 font-bold'
+                        : 'border-slate-200 bg-white text-slate-600'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="status"
+                      value="dikirim_ke_provinsi"
+                      checked={newStatus === 'dikirim_ke_provinsi'}
+                      onChange={() => setNewStatus('dikirim_ke_provinsi')}
+                      className="sr-only"
+                    />
+                    <Send className="h-5 w-5 text-indigo-600 mb-1" />
+                    <span>Kirim ke Bawaslu Provinsi</span>
                   </label>
 
                   <label
@@ -638,6 +667,19 @@ export const DaftarPengajuan: React.FC<DaftarPengajuanProps> = ({
                     <span>Tolak Pengajuan</span>
                   </label>
                 </div>
+
+                {/* If sent to province, show information banner */}
+                {newStatus === 'dikirim_ke_provinsi' && (
+                  <div className="rounded-lg bg-indigo-50/80 border border-indigo-200 p-3.5 text-xs text-indigo-950">
+                    <p className="font-bold flex items-center gap-1.5">
+                      <Send className="h-4 w-4 text-indigo-600" />
+                      Status: Berkas Sedang Dikirim ke Bawaslu Provinsi Jawa Barat
+                    </p>
+                    <p className="text-[11px] text-indigo-800 mt-1 leading-relaxed">
+                      Status berkas usulan akan diperbarui menjadi &quot;Berkas Sedang Dikirim ke Bawaslu Provinsi&quot;. Pemohon akan menerima notifikasi resmi bahwa berkas telah selesai diverifikasi oleh Kabupaten Subang dan sedang diproses ke Bawaslu Provinsi.
+                    </p>
+                  </div>
+                )}
 
                 {/* If approved, show Nomot SK field */}
                 {newStatus === 'disetujui' && (

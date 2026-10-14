@@ -25,14 +25,18 @@ import { KelolaPegawai } from './components/admin/KelolaPegawai';
 import { DaftarPengajuan } from './components/admin/DaftarPengajuan';
 import { KelolaUser } from './components/admin/KelolaUser';
 import { LaporanKgb } from './components/admin/LaporanKgb';
+import { TemplateDokumenView } from './components/admin/TemplateDokumenView';
 import { PegawaiDashboard } from './components/pegawai/PegawaiDashboard';
 import { AjukanPermohonan } from './components/pegawai/AjukanPermohonan';
 import { RiwayatPengajuan } from './components/pegawai/RiwayatPengajuan';
 import { RegulasiView } from './components/pegawai/RegulasiView';
+import { ProfilPegawaiView } from './components/pegawai/ProfilPegawaiView';
 import { SupabaseModal } from './components/SupabaseModal';
 import { EmailLogModal } from './components/EmailLogModal';
 import { NotificationModal } from './components/NotificationModal';
 import { UbahPasswordModal } from './components/UbahPasswordModal';
+import { KopSuratModal } from './components/admin/KopSuratModal';
+import { TandaTanganCapModal } from './components/admin/TandaTanganCapModal';
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -54,6 +58,8 @@ export default function App() {
   const [isEmailLogsModalOpen, setIsEmailLogsModalOpen] = useState(false);
   const [isNotificationsModalOpen, setIsNotificationsModalOpen] = useState(false);
   const [isUbahPasswordModalOpen, setIsUbahPasswordModalOpen] = useState(false);
+  const [isGlobalKopModalOpen, setIsGlobalKopModalOpen] = useState(false);
+  const [isGlobalTtdModalOpen, setIsGlobalTtdModalOpen] = useState(false);
 
   // Load Data
   const loadAllData = async () => {
@@ -85,28 +91,13 @@ export default function App() {
 
   useEffect(() => {
     loadAllData();
-
-    // Check if user session was stored in localStorage
-    const savedUser = localStorage.getItem('sikgb_session_user');
-    if (savedUser) {
-      try {
-        setCurrentUser(JSON.parse(savedUser));
-      } catch (e) {
-        console.error(e);
-      }
-    } else {
-      // Default to initial admin for instant usability
-      getUsersList().then((users) => {
-        if (users.length > 0) {
-          setCurrentUser(users[0]);
-        }
-      });
-    }
+    // Halaman pertama yang tampil saat membuka aplikasi selalu halaman login
+    setCurrentUser(null);
+    localStorage.removeItem('sikgb_session_user');
   }, []);
 
   const handleLogin = (user: User) => {
     setCurrentUser(user);
-    localStorage.setItem('sikgb_session_user', JSON.stringify(user));
     setCurrentTab('dashboard');
     setSelectedPengajuan(null);
   };
@@ -198,6 +189,8 @@ export default function App() {
           onOpenSupabaseModal={() => setIsSupabaseModalOpen(true)}
           onOpenEmailLogs={() => setIsEmailLogsModalOpen(true)}
           onOpenUbahPassword={() => setIsUbahPasswordModalOpen(true)}
+          onOpenKopSuratModal={() => setIsGlobalKopModalOpen(true)}
+          onOpenTtdCapModal={() => setIsGlobalTtdModalOpen(true)}
         />
 
         {/* Main Viewport Content Area */}
@@ -249,6 +242,13 @@ export default function App() {
                   pegawaiList={pegawaiList}
                 />
               )}
+
+              {currentTab === 'template' && (
+                <TemplateDokumenView
+                  pegawaiList={pegawaiList}
+                  pengajuanList={pengajuanList}
+                />
+              )}
             </>
           )}
 
@@ -288,6 +288,15 @@ export default function App() {
               )}
 
               {currentTab === 'regulasi' && <RegulasiView />}
+
+              {currentTab === 'profil' && linkedPegawai && (
+                <ProfilPegawaiView
+                  pegawai={linkedPegawai}
+                  currentUser={currentUser}
+                  onRefreshData={loadAllData}
+                  onBackToDashboard={() => setCurrentTab('dashboard')}
+                />
+              )}
             </>
           )}
         </main>
@@ -335,6 +344,18 @@ export default function App() {
           }}
         />
       )}
+
+      {/* GLOBAL KOP SURAT CONFIGURATION MODAL */}
+      <KopSuratModal
+        isOpen={isGlobalKopModalOpen}
+        onClose={() => setIsGlobalKopModalOpen(false)}
+      />
+
+      {/* GLOBAL TANDA TANGAN & CAP CONFIGURATION MODAL */}
+      <TandaTanganCapModal
+        isOpen={isGlobalTtdModalOpen}
+        onClose={() => setIsGlobalTtdModalOpen(false)}
+      />
     </div>
   );
 }

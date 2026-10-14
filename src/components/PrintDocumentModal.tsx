@@ -1,7 +1,12 @@
-import React, { useRef } from 'react';
-import { X, Printer, Download, CheckCircle2, Building2 } from 'lucide-react';
-import { PengajuanKGB, Pegawai } from '../types';
+import React, { useRef, useState } from 'react';
+import { X, Printer, Download, CheckCircle2, Building2, Stamp } from 'lucide-react';
+import { PengajuanKGB, Pegawai, KopSuratConfig, TandaTanganCapConfig } from '../types';
+import { getKopSuratConfig, getTandaTanganCapConfig } from '../services/storage';
 import { BawasluLogo } from './BawasluLogo';
+import { KopSuratHeader } from './KopSuratHeader';
+import { KopSuratModal } from './admin/KopSuratModal';
+import { TandaTanganCapBlock } from './TandaTanganCapBlock';
+import { TandaTanganCapModal } from './admin/TandaTanganCapModal';
 
 interface PrintDocumentModalProps {
   isOpen: boolean;
@@ -18,6 +23,11 @@ export const PrintDocumentModal: React.FC<PrintDocumentModalProps> = ({
   pegawai,
   mode,
 }) => {
+  const [kopConfig, setKopConfig] = useState<KopSuratConfig>(getKopSuratConfig());
+  const [isKopModalOpen, setIsKopModalOpen] = useState(false);
+  const [ttdCapConfig, setTtdCapConfig] = useState<TandaTanganCapConfig>(getTandaTanganCapConfig());
+  const [isTtdModalOpen, setIsTtdModalOpen] = useState(false);
+
   if (!isOpen) return null;
 
   const handlePrint = () => {
@@ -50,6 +60,22 @@ export const PrintDocumentModal: React.FC<PrintDocumentModalProps> = ({
           </div>
           <div className="flex items-center gap-2">
             <button
+              onClick={() => setIsKopModalOpen(true)}
+              className="flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition"
+              title="Atur Nama Instansi, Alamat, dan Logo Kop Surat"
+            >
+              <Building2 className="h-3.5 w-3.5 text-amber-600" />
+              <span>Atur Kop</span>
+            </button>
+            <button
+              onClick={() => setIsTtdModalOpen(true)}
+              className="flex items-center gap-1.5 rounded-lg border border-purple-200 bg-purple-50 px-3 py-1.5 text-xs font-semibold text-purple-800 hover:bg-purple-100 transition"
+              title="Atur Tanda Tangan Digital & Cap Stempel Dinas Resmi"
+            >
+              <Stamp className="h-3.5 w-3.5 text-purple-700" />
+              <span>Atur TTD &amp; Cap</span>
+            </button>
+            <button
               onClick={handlePrint}
               className="flex items-center gap-1.5 rounded-lg bg-slate-900 px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-slate-800"
             >
@@ -68,26 +94,8 @@ export const PrintDocumentModal: React.FC<PrintDocumentModalProps> = ({
         {/* Printable Sheet Viewport */}
         <div className="flex-1 overflow-y-auto p-6 sm:p-10 bg-slate-100/70">
           <div className="mx-auto max-w-[210mm] bg-white p-8 sm:p-12 shadow border border-slate-200 text-slate-900 text-sm leading-relaxed print:p-0 print:border-none print:shadow-none">
-            {/* KOP SURAT RESMI BAWASLU KABUPATEN SUBANG */}
-            <div className="flex items-center border-b-[3px] border-double border-slate-900 pb-4 mb-6">
-              <div className="w-20 shrink-0 flex justify-center">
-                <BawasluLogo size="lg" showText={false} />
-              </div>
-              <div className="flex-1 text-center pr-10">
-                <h3 className="font-serif text-sm font-semibold tracking-wider uppercase text-slate-800">
-                  BADAN PENGAWAS PEMILIHAN UMUM
-                </h3>
-                <h2 className="font-serif text-lg font-bold tracking-wide uppercase text-slate-950">
-                  KABUPATEN SUBANG
-                </h2>
-                <p className="text-[11px] text-slate-600 mt-0.5">
-                  Jl. Veteran No. 12, Kel. Dangdeur, Kec. Subang, Kabupaten Subang, Jawa Barat 41211
-                </p>
-                <p className="text-[10px] text-slate-500 font-mono">
-                  Laman: subang.bawaslu.go.id · Pos-el: bawaslukabsubang@gmail.com
-                </p>
-              </div>
-            </div>
+            {/* KOP SURAT RESMI DINAMIS */}
+            <KopSuratHeader config={kopConfig} />
 
             {/* DOCUMENT CONTENT DEPENDING ON MODE */}
             {mode === 'sk_kgb' && (
@@ -166,15 +174,11 @@ export const PrintDocumentModal: React.FC<PrintDocumentModalProps> = ({
 
                   {/* Signatures */}
                   <div className="pt-8 flex justify-end">
-                    <div className="text-center w-64">
-                      <p className="text-slate-600">Subang, {pengajuan.tanggalSkDiterbitkan || '04 Oktober 2026'}</p>
-                      <p className="font-semibold text-slate-900 mt-1">Kepala Sekretariat Bawaslu<br />Kabupaten Subang</p>
-                      <div className="h-20 flex items-center justify-center">
-                        <span className="font-serif italic text-slate-400 text-xs">[Tanda Tangan & Cap Digital]</span>
-                      </div>
-                      <p className="font-bold underline text-slate-950">H. TATANG KOSWARA, S.Sos., M.Si</p>
-                      <p className="text-[11px] font-mono text-slate-600">NIP. 197405121998031002</p>
-                    </div>
+                    <TandaTanganCapBlock
+                      config={ttdCapConfig}
+                      tanggalText={pengajuan.tanggalSkDiterbitkan || '04 Oktober 2026'}
+                      align="right"
+                    />
                   </div>
                 </div>
               </div>
@@ -217,7 +221,11 @@ export const PrintDocumentModal: React.FC<PrintDocumentModalProps> = ({
                     </tr>
                     <tr className="border-b border-slate-300">
                       <td className="p-2 bg-slate-50 font-semibold border-r border-slate-300">Status Verifikasi</td>
-                      <td className="p-2 font-bold uppercase text-slate-900">{pengajuan.status.replace('_', ' ')}</td>
+                      <td className="p-2 font-bold uppercase text-slate-900">
+                        {pengajuan.status === 'dikirim_ke_provinsi'
+                          ? 'BERKAS DIKIRIM KE BAWASLU PROVINSI'
+                          : pengajuan.status.replace(/_/g, ' ')}
+                      </td>
                     </tr>
                     <tr>
                       <td className="p-2 bg-slate-50 font-semibold border-r border-slate-300">Catatan Petugas</td>
@@ -228,21 +236,21 @@ export const PrintDocumentModal: React.FC<PrintDocumentModalProps> = ({
                   </tbody>
                 </table>
 
-                <div className="mt-8 grid grid-cols-2 gap-4 text-center text-xs">
+                <div className="mt-8 grid grid-cols-2 gap-4 items-end text-center text-xs">
                   <div>
                     <p className="font-semibold text-slate-700">Petugas Verifikator Kepegawaian</p>
                     <div className="h-16 flex items-center justify-center text-slate-400 italic">
                       [Tervalidasi Sistem]
                     </div>
                     <p className="font-bold underline">{pengajuan.diverifikasiOleh || 'Staf Sub Bagian Administrasi'}</p>
+                    <p className="font-mono text-[10px] text-slate-500">Staf Kepegawaian Bawaslu</p>
                   </div>
                   <div>
-                    <p className="font-semibold text-slate-700">Mengetahui, Kepala Sekretariat</p>
-                    <div className="h-16 flex items-center justify-center text-slate-400 italic">
-                      [Disetujui]
-                    </div>
-                    <p className="font-bold underline">H. TATANG KOSWARA, S.Sos., M.Si</p>
-                    <p className="font-mono text-[10px]">NIP. 197405121998031002</p>
+                    <TandaTanganCapBlock
+                      config={ttdCapConfig}
+                      isCompact={true}
+                      align="center"
+                    />
                   </div>
                 </div>
               </div>
@@ -298,6 +306,20 @@ export const PrintDocumentModal: React.FC<PrintDocumentModalProps> = ({
           </div>
         </div>
       </div>
+
+      {/* KOP SURAT MODAL */}
+      <KopSuratModal
+        isOpen={isKopModalOpen}
+        onClose={() => setIsKopModalOpen(false)}
+        onSaved={(newCfg) => setKopConfig(newCfg)}
+      />
+
+      {/* TANDA TANGAN & CAP MODAL */}
+      <TandaTanganCapModal
+        isOpen={isTtdModalOpen}
+        onClose={() => setIsTtdModalOpen(false)}
+        onSaved={(newCfg) => setTtdCapConfig(newCfg)}
+      />
     </div>
   );
 };

@@ -3,6 +3,7 @@ export type UserRole = 'admin' | 'pegawai';
 export type PengajuanStatus = 
   | 'menunggu_verifikasi' 
   | 'dalam_proses' 
+  | 'dikirim_ke_provinsi'
   | 'perlu_perbaikan' 
   | 'disetujui' 
   | 'ditolak';
@@ -110,3 +111,63 @@ export interface SupabaseConfig {
   anonKey: string;
   isConnected: boolean;
 }
+
+export type TemplateKategori = 
+  | 'surat_pengantar' 
+  | 'sk_kgb' 
+  | 'disposisi' 
+  | 'tanda_terima' 
+  | 'surat_keterangan' 
+  | 'lainnya';
+
+export interface TemplateDokumen {
+  id: string;
+  nama: string;
+  deskripsi: string;
+  kategori: TemplateKategori;
+  formatNomor: string;
+  judulDokumen: string;
+  isiKonten: string;
+  penandatanganNama: string;
+  penandatanganJabatan: string;
+  penandatanganNip: string;
+  tembusan?: string[];
+  isDefault?: boolean;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface KopSuratConfig {
+  namaInstansiUtama: string;
+  namaInstansiSub: string;
+  unitKerja?: string;
+  alamatLengkap: string;
+  teleponFaks?: string;
+  emailWebsite?: string;
+  kodePos?: string;
+  logoUrl?: string; // Base64 data URL or external URL
+  logoWidthPx?: number; // e.g. 70 - 120
+  garisKopGaya?: 'ganda' | 'tunggal' | 'tebal';
+  updatedAt?: string;
+}
+
+export interface TandaTanganCapConfig {
+  namaPejabat: string;
+  jabatan: string;
+  nip: string;
+  kota: string;
+  tanggalText?: string;
+  // Tanda Tangan
+  tandaTanganUrl?: string; // Base64 data URL
+  tandaTanganWidthPx?: number; // 90 to 220
+  tampilkanTandaTangan: boolean;
+  // Cap / Stempel
+  capUrl?: string; // Base64 data URL
+  capWidthPx?: number; // 80 to 200
+  tampilkanCap: boolean;
+  // Tata Letak & Efek
+  posisiCap: 'tumpang_kiri' | 'sebelah_kiri' | 'sebelah_kanan';
+  opacityCap?: number; // 0.5 to 1.0
+  updatedAt?: string;
+}
+

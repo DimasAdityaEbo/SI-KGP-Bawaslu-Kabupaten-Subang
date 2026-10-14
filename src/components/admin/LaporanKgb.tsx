@@ -8,10 +8,16 @@ import {
   FileSpreadsheet,
   Building2,
   CheckCircle2,
+  Stamp,
 } from 'lucide-react';
-import { PengajuanKGB, Pegawai } from '../../types';
+import { PengajuanKGB, Pegawai, KopSuratConfig, TandaTanganCapConfig } from '../../types';
 import { DIVISI_OPTIONS } from '../../data/seedData';
+import { getKopSuratConfig, getTandaTanganCapConfig } from '../../services/storage';
 import { BawasluLogo } from '../BawasluLogo';
+import { KopSuratHeader } from '../KopSuratHeader';
+import { KopSuratModal } from './KopSuratModal';
+import { TandaTanganCapBlock } from '../TandaTanganCapBlock';
+import { TandaTanganCapModal } from './TandaTanganCapModal';
 
 interface LaporanKgbProps {
   pengajuanList: PengajuanKGB[];
@@ -24,6 +30,10 @@ export const LaporanKgb: React.FC<LaporanKgbProps> = ({ pengajuanList, pegawaiLi
   const [filterDivisi, setFilterDivisi] = useState('ALL');
   const [filterStatus, setFilterStatus] = useState('ALL');
   const [isPrintPreview, setIsPrintPreview] = useState(false);
+  const [kopConfig, setKopConfig] = useState<KopSuratConfig>(getKopSuratConfig());
+  const [isKopModalOpen, setIsKopModalOpen] = useState(false);
+  const [ttdCapConfig, setTtdCapConfig] = useState<TandaTanganCapConfig>(getTandaTanganCapConfig());
+  const [isTtdModalOpen, setIsTtdModalOpen] = useState(false);
 
   // Filtered dataset
   const filteredData = pengajuanList.filter((item) => {
@@ -96,6 +106,22 @@ export const LaporanKgb: React.FC<LaporanKgbProps> = ({ pengajuanList, pegawaiLi
 
         <div className="flex items-center gap-2">
           <button
+            onClick={() => setIsKopModalOpen(true)}
+            className="flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition"
+            title="Atur Nama Instansi, Alamat, dan Logo Kop Surat"
+          >
+            <Building2 className="h-4 w-4 text-amber-600" />
+            <span>Atur Kop Surat</span>
+          </button>
+          <button
+            onClick={() => setIsTtdModalOpen(true)}
+            className="flex items-center gap-1.5 rounded-lg border border-purple-200 bg-purple-50 px-3.5 py-2 text-xs font-semibold text-purple-800 hover:bg-purple-100 transition"
+            title="Atur Tanda Tangan Digital & Cap Stempel Dinas Resmi"
+          >
+            <Stamp className="h-4 w-4 text-purple-700" />
+            <span>Atur TTD &amp; Cap</span>
+          </button>
+          <button
             onClick={handleExportCsv}
             className="flex items-center gap-1.5 rounded-lg border border-emerald-300 bg-emerald-50 px-3.5 py-2 text-xs font-semibold text-emerald-800 hover:bg-emerald-100"
           >
@@ -167,6 +193,7 @@ export const LaporanKgb: React.FC<LaporanKgbProps> = ({ pengajuanList, pegawaiLi
           >
             <option value="ALL">Semua Status</option>
             <option value="disetujui">Disetujui (SK Terbit)</option>
+            <option value="dikirim_ke_provinsi">Dikirim ke Bawaslu Provinsi</option>
             <option value="menunggu_verifikasi">Menunggu Verifikasi</option>
             <option value="perlu_perbaikan">Perlu Perbaikan</option>
             <option value="ditolak">Ditolak</option>
@@ -196,26 +223,8 @@ export const LaporanKgb: React.FC<LaporanKgbProps> = ({ pengajuanList, pegawaiLi
 
       {/* REPORT CONTENT & PRINTABLE CONTAINER */}
       <div className="rounded-xl border border-slate-200 bg-white p-6 sm:p-8 shadow-2xs print:border-none print:shadow-none print:p-0">
-        {/* Printable Letterhead */}
-        <div className="flex items-center border-b-[3px] border-double border-slate-900 pb-4 mb-6">
-          <div className="w-16 shrink-0 flex justify-center">
-            <BawasluLogo size="md" showText={false} />
-          </div>
-          <div className="flex-1 text-center pr-8">
-            <h3 className="font-serif text-xs font-semibold tracking-wider uppercase text-slate-800">
-              BADAN PENGAWAS PEMILIHAN UMUM
-            </h3>
-            <h2 className="font-serif text-base font-bold tracking-wide uppercase text-slate-950">
-              KABUPATEN SUBANG
-            </h2>
-            <p className="text-[10px] text-slate-600 mt-0.5">
-              Jl. Veteran No. 12, Kel. Dangdeur, Kec. Subang, Kabupaten Subang, Jawa Barat 41211
-            </p>
-            <p className="text-[9px] text-slate-500 font-mono">
-              Sistem Informasi Pelayanan Kenaikan Gaji Berkala (SI-KGB) · Subang, Jawa Barat
-            </p>
-          </div>
-        </div>
+        {/* Printable Letterhead Dinamis */}
+        <KopSuratHeader config={kopConfig} isCompact={true} />
 
         {/* Report Title */}
         <div className="text-center mb-6">
@@ -269,7 +278,9 @@ export const LaporanKgb: React.FC<LaporanKgbProps> = ({ pengajuanList, pegawaiLi
                     </td>
                     <td className="py-2.5 px-3 border border-slate-200 text-center">
                       <span className="font-semibold uppercase text-[10px]">
-                        {d.status.replace('_', ' ')}
+                        {d.status === 'dikirim_ke_provinsi'
+                          ? 'DIKIRIM KE PROVINSI'
+                          : d.status.replace(/_/g, ' ')}
                       </span>
                     </td>
                     <td className="py-2.5 px-3 border border-slate-200 font-mono text-[11px]">
@@ -284,17 +295,23 @@ export const LaporanKgb: React.FC<LaporanKgbProps> = ({ pengajuanList, pegawaiLi
 
         {/* Signature Block (Printable) */}
         <div className="mt-12 flex justify-end print-break-inside-avoid">
-          <div className="text-center w-64 text-xs">
-            <p className="text-slate-600">Subang, {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
-            <p className="font-semibold text-slate-900 mt-1">Kepala Sekretariat Bawaslu<br />Kabupaten Subang</p>
-            <div className="h-16 flex items-center justify-center text-slate-400 italic">
-              [Tanda Tangan &amp; Cap Basah]
-            </div>
-            <p className="font-bold underline text-slate-950">H. TATANG KOSWARA, S.Sos., M.Si</p>
-            <p className="text-[11px] font-mono text-slate-600">NIP. 197405121998031002</p>
-          </div>
+          <TandaTanganCapBlock config={ttdCapConfig} align="right" />
         </div>
       </div>
+
+      {/* KOP SURAT CONFIGURATION MODAL */}
+      <KopSuratModal
+        isOpen={isKopModalOpen}
+        onClose={() => setIsKopModalOpen(false)}
+        onSaved={(newCfg) => setKopConfig(newCfg)}
+      />
+
+      {/* TANDA TANGAN & CAP CONFIGURATION MODAL */}
+      <TandaTanganCapModal
+        isOpen={isTtdModalOpen}
+        onClose={() => setIsTtdModalOpen(false)}
+        onSaved={(newCfg) => setTtdCapConfig(newCfg)}
+      />
     </div>
   );
 };

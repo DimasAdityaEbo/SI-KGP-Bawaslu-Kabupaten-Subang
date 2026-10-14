@@ -123,12 +123,12 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin, usersList }) => {
           </form>
 
           {/* Institutional note */}
-          <div className="mt-6 rounded-lg border border-amber-200 bg-amber-50/70 p-3 text-[11px] text-amber-950 flex items-start gap-2.5">
+          <div className="mt-5 rounded-lg border border-amber-200 bg-amber-50/70 p-3 text-[11px] text-amber-950 flex items-start gap-2.5">
             <Info className="h-4 w-4 text-amber-700 shrink-0 mt-0.5" />
             <div className="leading-relaxed">
               <span className="text-amber-900 font-bold">Petunjuk Masuk Pegawai:</span>
               <p className="mt-0.5 text-amber-900/90">
-                Gunakan <strong>nama pegawai</strong> sebagai username dan <strong>NIP</strong> sebagai password default awal. Anda dapat mengubah password setelah berhasil masuk.
+                Gunakan <strong>nama panggilan pegawai</strong> sebagai username dan <strong>NIP</strong> sebagai password default awal. Anda dapat mengubah password setelah berhasil masuk.
               </p>
             </div>
           </div>

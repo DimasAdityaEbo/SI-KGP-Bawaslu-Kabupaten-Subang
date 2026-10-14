@@ -5,6 +5,9 @@ import {
   NotificationItem,
   EmailDispatchLog,
   PengajuanStatus,
+  TemplateDokumen,
+  KopSuratConfig,
+  TandaTanganCapConfig,
 } from '../types';
 import {
   INITIAL_PEGAWAI,
@@ -12,7 +15,12 @@ import {
   INITIAL_PENGAJUAN,
   INITIAL_NOTIFICATIONS,
   INITIAL_EMAIL_LOGS,
+  INITIAL_TEMPLATES,
 } from '../data/seedData';
+import {
+  DEFAULT_CAP_BAWASLU_SVG,
+  DEFAULT_TANDA_TANGAN_SVG,
+} from '../data/defaultSignatureAssets';
 import { getSupabaseClient } from './supabase';
 import { saveDocumentBinary, getDocumentBinary } from './idbStorage';
 
@@ -52,6 +60,9 @@ const KEYS = {
   PENGAJUAN: 'sikgb_pengajuan_v1',
   NOTIFICATIONS: 'sikgb_notifications_v1',
   EMAIL_LOGS: 'sikgb_email_logs_v1',
+  TEMPLATES: 'sikgb_templates_v1',
+  KOP_SURAT: 'sikgb_kop_surat_v1',
+  TANDA_TANGAN_CAP: 'sikgb_ttd_cap_v1',
 };
 
 // Initialize localStorage with seed data if empty
@@ -70,6 +81,9 @@ function initializeLocalStorage(): void {
   }
   if (!localStorage.getItem(KEYS.EMAIL_LOGS)) {
     localStorage.setItem(KEYS.EMAIL_LOGS, JSON.stringify(INITIAL_EMAIL_LOGS));
+  }
+  if (!localStorage.getItem(KEYS.TEMPLATES)) {
+    localStorage.setItem(KEYS.TEMPLATES, JSON.stringify(INITIAL_TEMPLATES));
   }
 }
 
@@ -386,6 +400,29 @@ export async function deleteUser(id: string): Promise<boolean> {
 
 // ======================== NOTIFIKASI REPOSITORY ========================
 export async function getNotifications(): Promise<NotificationItem[]> {
+  const supabase = getSupabaseClient();
+  if (supabase) {
+    try {
+      const { data, error } = await supabase
+        .from('notifikasi')
+        .select('*')
+        .order('created_at', { ascending: false });
+      if (!error && data && data.length > 0) {
+        return data.map((d: any) => ({
+          id: d.id,
+          userId: d.user_id || d.userId,
+          title: d.title,
+          message: d.message,
+          type: d.type,
+          isRead: d.is_read ?? d.isRead ?? false,
+          createdAt: d.created_at || d.createdAt,
+        }));
+      }
+    } catch (e) {
+      console.warn('Supabase fetch notifikasi error, fallback local:', e);
+    }
+  }
+
   try {
     const raw = localStorage.getItem(KEYS.NOTIFICATIONS);
     return raw ? JSON.parse(raw) : INITIAL_NOTIFICATIONS;
@@ -440,10 +477,48 @@ export async function markAllNotificationsAsRead(userId?: string): Promise<void>
     return n;
   });
   safeLocalStorageSet(KEYS.NOTIFICATIONS, updated);
+
+  const supabase = getSupabaseClient();
+  if (supabase) {
+    try {
+      if (userId) {
+        await supabase.from('notifikasi').update({ is_read: true }).eq('user_id', userId);
+      } else {
+        await supabase.from('notifikasi').update({ is_read: true });
+      }
+    } catch (e) {
+      console.warn('Supabase markAll notifikasi error:', e);
+    }
+  }
 }
 
 // ======================== EMAIL LOGS REPOSITORY ========================
 export async function getEmailLogs(): Promise<EmailDispatchLog[]> {
+  const supabase = getSupabaseClient();
+  if (supabase) {
+    try {
+      const { data, error } = await supabase
+        .from('email_logs')
+        .select('*')
+        .order('timestamp', { ascending: false });
+      if (!error && data && data.length > 0) {
+        return data.map((d: any) => ({
+          id: d.id,
+          toEmail: d.to_email || d.toEmail,
+          toName: d.to_name || d.toName,
+          subject: d.subject,
+          contentSnippet: d.content_snippet || d.contentSnippet,
+          status: d.status,
+          pengajuanId: d.pengajuan_id || d.pengajuanId,
+          noPengajuan: d.no_pengajuan || d.noPengajuan,
+          timestamp: d.timestamp,
+        }));
+      }
+    } catch (e) {
+      console.warn('Supabase fetch email_logs error, fallback local:', e);
+    }
+  }
+
   try {
     const raw = localStorage.getItem(KEYS.EMAIL_LOGS);
     return raw ? JSON.parse(raw) : INITIAL_EMAIL_LOGS;
@@ -476,3 +551,137 @@ export async function addEmailLog(log: EmailDispatchLog): Promise<void> {
     }
   }
 }
+
+// ======================== TEMPLATES REPOSITORY ========================
+export async function getTemplatesList(): Promise<TemplateDokumen[]> {
+  try {
+    const raw = localStorage.getItem(KEYS.TEMPLATES);
+    return raw ? JSON.parse(raw) : INITIAL_TEMPLATES;
+  } catch (e) {
+    return INITIAL_TEMPLATES;
+  }
+}
+
+export async function saveTemplate(template: TemplateDokumen): Promise<TemplateDokumen> {
+  const current = await getTemplatesList();
+  const index = current.findIndex((t) => t.id === template.id);
+  let updated: TemplateDokumen[];
+  const itemToSave: TemplateDokumen = {
+    ...template,
+    updatedAt: new Date().toISOString(),
+  };
+
+  if (index >= 0) {
+    updated = [...current];
+    updated[index] = itemToSave;
+  } else {
+    updated = [itemToSave, ...current];
+  }
+
+  safeLocalStorageSet(KEYS.TEMPLATES, updated);
+  return itemToSave;
+}
+
+export async function deleteTemplate(id: string): Promise<void> {
+  const current = await getTemplatesList();
+  const updated = current.filter((t) => t.id !== id);
+  safeLocalStorageSet(KEYS.TEMPLATES, updated);
+}
+
+export async function resetTemplatesToDefault(): Promise<TemplateDokumen[]> {
+  safeLocalStorageSet(KEYS.TEMPLATES, INITIAL_TEMPLATES);
+  return INITIAL_TEMPLATES;
+}
+
+// ======================== KOP SURAT REPOSITORY ========================
+export const DEFAULT_KOP_SURAT: KopSuratConfig = {
+  namaInstansiUtama: 'BADAN PENGAWAS PEMILIHAN UMUM',
+  namaInstansiSub: 'KABUPATEN SUBANG',
+  unitKerja: 'SEKRETARIAT',
+  alamatLengkap: 'Jl. Veteran No. 12, Kel. Dangdeur, Kec. Subang, Kabupaten Subang, Jawa Barat 41211',
+  teleponFaks: 'Telp: (0260) 417890 · Faks: (0260) 417891',
+  emailWebsite: 'Laman: subang.bawaslu.go.id · Pos-el: bawaslukabsubang@gmail.com',
+  kodePos: '41211',
+  logoUrl: '',
+  logoWidthPx: 80,
+  garisKopGaya: 'ganda',
+};
+
+export function getKopSuratConfig(): KopSuratConfig {
+  try {
+    const raw = localStorage.getItem(KEYS.KOP_SURAT);
+    if (!raw) return DEFAULT_KOP_SURAT;
+    const parsed = JSON.parse(raw);
+    return { ...DEFAULT_KOP_SURAT, ...parsed };
+  } catch (e) {
+    return DEFAULT_KOP_SURAT;
+  }
+}
+
+export function saveKopSuratConfig(config: KopSuratConfig): KopSuratConfig {
+  const itemToSave: KopSuratConfig = {
+    ...config,
+    updatedAt: new Date().toISOString(),
+  };
+  try {
+    localStorage.setItem(KEYS.KOP_SURAT, JSON.stringify(itemToSave));
+  } catch (e) {
+    console.warn('Failed to save kop surat to localStorage:', e);
+  }
+  return itemToSave;
+}
+
+export function resetKopSuratConfig(): KopSuratConfig {
+  try {
+    localStorage.removeItem(KEYS.KOP_SURAT);
+  } catch (e) {}
+  return DEFAULT_KOP_SURAT;
+}
+
+// ======================== TANDA TANGAN & CAP REPOSITORY ========================
+export const DEFAULT_TTD_CAP: TandaTanganCapConfig = {
+  namaPejabat: 'H. TATANG KOSWARA, S.Sos., M.Si',
+  jabatan: 'Kepala Sekretariat Bawaslu Kabupaten Subang',
+  nip: '197405121998031002',
+  kota: 'Subang',
+  tandaTanganUrl: DEFAULT_TANDA_TANGAN_SVG,
+  tandaTanganWidthPx: 140,
+  tampilkanTandaTangan: true,
+  capUrl: DEFAULT_CAP_BAWASLU_SVG,
+  capWidthPx: 120,
+  tampilkanCap: true,
+  posisiCap: 'tumpang_kiri',
+  opacityCap: 0.88,
+};
+
+export function getTandaTanganCapConfig(): TandaTanganCapConfig {
+  try {
+    const raw = localStorage.getItem(KEYS.TANDA_TANGAN_CAP);
+    if (!raw) return DEFAULT_TTD_CAP;
+    const parsed = JSON.parse(raw);
+    return { ...DEFAULT_TTD_CAP, ...parsed };
+  } catch (e) {
+    return DEFAULT_TTD_CAP;
+  }
+}
+
+export function saveTandaTanganCapConfig(config: TandaTanganCapConfig): TandaTanganCapConfig {
+  const itemToSave: TandaTanganCapConfig = {
+    ...config,
+    updatedAt: new Date().toISOString(),
+  };
+  try {
+    localStorage.setItem(KEYS.TANDA_TANGAN_CAP, JSON.stringify(itemToSave));
+  } catch (e) {
+    console.warn('Failed to save ttd & cap to localStorage:', e);
+  }
+  return itemToSave;
+}
+
+export function resetTandaTanganCapConfig(): TandaTanganCapConfig {
+  try {
+    localStorage.removeItem(KEYS.TANDA_TANGAN_CAP);
+  } catch (e) {}
+  return DEFAULT_TTD_CAP;
+}
+

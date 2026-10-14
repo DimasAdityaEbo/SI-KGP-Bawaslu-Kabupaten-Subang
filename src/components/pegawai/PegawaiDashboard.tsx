@@ -12,6 +12,8 @@ import {
   ArrowRight,
   ShieldAlert,
   KeyRound,
+  UserCheck,
+  Send,
 } from 'lucide-react';
 import { Pegawai, PengajuanKGB, User } from '../../types';
 
@@ -71,6 +73,14 @@ export const PegawaiDashboard: React.FC<PegawaiDashboardProps> = ({
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
+            <button
+              onClick={() => onSelectTab('profil')}
+              className="flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 shadow-xs"
+              title="Lengkapi atau edit data profil kepegawaian Anda"
+            >
+              <UserCheck className="h-3.5 w-3.5 text-sky-600" />
+              <span>Profil &amp; Data Diri</span>
+            </button>
             {onOpenUbahPassword && (
               <button
                 onClick={onOpenUbahPassword}
@@ -90,6 +100,29 @@ export const PegawaiDashboard: React.FC<PegawaiDashboardProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Alert banner if profile is not completed */}
+      {(!pegawai.email || !pegawai.noHp || !pegawai.jabatan || !pegawai.tempatLahir) && (
+        <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-xs text-amber-950 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 shadow-2xs">
+          <div className="flex items-start gap-3">
+            <div className="rounded-lg bg-amber-200 p-2 text-amber-900 shrink-0">
+              <AlertTriangle className="h-4 w-4" />
+            </div>
+            <div>
+              <p className="font-bold">Data Profil Anda Belum Lengkap</p>
+              <p className="text-[11px] text-amber-800 mt-0.5">
+                Admin baru mendaftarkan Nama dan NIP Anda. Silakan lengkapi nomor WhatsApp, email, tempat lahir, dan jabatan Anda agar pengajuan KGB dan notifikasi dapat diproses secara optimal.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => onSelectTab('profil')}
+            className="shrink-0 rounded-lg bg-amber-600 px-4 py-2 font-bold text-white hover:bg-amber-700 transition shadow-xs text-xs"
+          >
+            Lengkapi Profil Sekarang
+          </button>
+        </div>
+      )}
 
       {/* COUNTDOWN & NEXT KGB REMINDER CARD */}
       <div
@@ -195,6 +228,12 @@ export const PegawaiDashboard: React.FC<PegawaiDashboardProps> = ({
                     KGB Disetujui
                   </span>
                 )}
+                {activeSubmission.status === 'dikirim_ke_provinsi' && (
+                  <span className="inline-flex items-center gap-1.5 rounded bg-indigo-100 px-3 py-1 text-xs font-bold text-indigo-900 border border-indigo-300">
+                    <Send className="h-3.5 w-3.5 text-indigo-700" />
+                    Berkas Dikirim ke Bawaslu Provinsi
+                  </span>
+                )}
                 {activeSubmission.status === 'menunggu_verifikasi' && (
                   <span className="inline-flex items-center gap-1 rounded bg-amber-100 px-3 py-1 text-xs font-bold text-amber-900 border border-amber-300">
                     <Clock className="h-4 w-4 text-amber-700" />
@@ -217,7 +256,7 @@ export const PegawaiDashboard: React.FC<PegawaiDashboardProps> = ({
 
             {/* Stepper Progress Indicator */}
             <div className="py-2">
-              <div className="grid grid-cols-3 gap-2 text-center text-xs">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-xs">
                 {/* Step 1 */}
                 <div className="flex flex-col items-center">
                   <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-600 text-white font-bold">
@@ -231,37 +270,81 @@ export const PegawaiDashboard: React.FC<PegawaiDashboardProps> = ({
                 <div className="flex flex-col items-center">
                   <div
                     className={`flex h-8 w-8 items-center justify-center rounded-full font-bold ${
-                      activeSubmission.status === 'disetujui' || activeSubmission.status === 'perlu_perbaikan'
+                      activeSubmission.status === 'disetujui' || activeSubmission.status === 'dikirim_ke_provinsi'
                         ? 'bg-emerald-600 text-white'
+                        : activeSubmission.status === 'perlu_perbaikan'
+                        ? 'bg-orange-500 text-white'
+                        : activeSubmission.status === 'ditolak'
+                        ? 'bg-red-600 text-white'
                         : 'bg-amber-500 text-white animate-pulse'
                     }`}
                   >
-                    2
+                    {activeSubmission.status === 'disetujui' || activeSubmission.status === 'dikirim_ke_provinsi' ? '✓' : '2'}
                   </div>
-                  <span className="mt-1 font-semibold text-slate-900">2. Verifikasi Dokumen</span>
-                  <span className="text-[10px] text-slate-400">Pemeriksaan SKP &amp; SK Pangkat</span>
+                  <span className="mt-1 font-semibold text-slate-900">2. Verifikasi Berkas</span>
+                  <span className="text-[10px] text-slate-400">Staf Bawaslu Subang</span>
                 </div>
 
-                {/* Step 3 */}
+                {/* Step 3: Dikirim ke Provinsi */}
                 <div className="flex flex-col items-center">
                   <div
                     className={`flex h-8 w-8 items-center justify-center rounded-full font-bold ${
                       activeSubmission.status === 'disetujui'
                         ? 'bg-emerald-600 text-white'
-                        : activeSubmission.status === 'perlu_perbaikan'
-                        ? 'bg-orange-500 text-white'
+                        : activeSubmission.status === 'dikirim_ke_provinsi'
+                        ? 'bg-indigo-600 text-white animate-pulse ring-2 ring-indigo-200'
                         : 'bg-slate-200 text-slate-500'
                     }`}
                   >
-                    3
+                    {activeSubmission.status === 'disetujui' ? '✓' : '3'}
                   </div>
-                  <span className="mt-1 font-semibold text-slate-900">3. Penetapan &amp; SK</span>
+                  <span className="mt-1 font-semibold text-slate-900">3. Dikirim ke Provinsi</span>
                   <span className="text-[10px] text-slate-400">
-                    {activeSubmission.status === 'disetujui' ? 'SK Terbit' : 'Hasil Keputusan'}
+                    {activeSubmission.status === 'dikirim_ke_provinsi'
+                      ? 'Sudah Dikirim ke Provinsi'
+                      : activeSubmission.status === 'disetujui'
+                      ? 'Selesai di Provinsi'
+                      : 'Bawaslu Jawa Barat'}
+                  </span>
+                </div>
+
+                {/* Step 4 */}
+                <div className="flex flex-col items-center">
+                  <div
+                    className={`flex h-8 w-8 items-center justify-center rounded-full font-bold ${
+                      activeSubmission.status === 'disetujui'
+                        ? 'bg-emerald-600 text-white'
+                        : activeSubmission.status === 'ditolak'
+                        ? 'bg-red-600 text-white'
+                        : 'bg-slate-200 text-slate-500'
+                    }`}
+                  >
+                    {activeSubmission.status === 'disetujui' ? '✓' : '4'}
+                  </div>
+                  <span className="mt-1 font-semibold text-slate-900">4. Penetapan &amp; SK</span>
+                  <span className="text-[10px] text-slate-400">
+                    {activeSubmission.status === 'disetujui'
+                      ? 'SK Terbit'
+                      : activeSubmission.status === 'ditolak'
+                      ? 'Ditolak'
+                      : 'Hasil Keputusan'}
                   </span>
                 </div>
               </div>
             </div>
+
+            {/* Banner info khusus bila berkas sudah dikirim ke provinsi */}
+            {activeSubmission.status === 'dikirim_ke_provinsi' && (
+              <div className="rounded-lg bg-indigo-50 border border-indigo-200 p-3.5 text-xs text-indigo-950 flex items-start gap-2.5">
+                <Send className="h-4 w-4 text-indigo-600 shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-bold">Status: Berkas Sudah Dikirim ke Bawaslu Provinsi Jawa Barat</p>
+                  <p className="text-[11px] text-indigo-800 mt-0.5 leading-relaxed">
+                    Berkas usulan KGB Anda telah dinyatakan lengkap dan memenuhi syarat oleh Bawaslu Kabupaten Subang, dan saat ini <strong>sudah resmi dikirimkan ke Bawaslu Provinsi Jawa Barat</strong> untuk proses penerbitan surat rekomendasi / SK Kenaikan Gaji Berkala.
+                  </p>
+                </div>
+              </div>
+            )}
 
             {/* Note from verifier if any */}
             {activeSubmission.catatanVerifikator && (

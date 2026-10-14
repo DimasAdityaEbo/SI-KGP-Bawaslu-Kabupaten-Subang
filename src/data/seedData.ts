@@ -1,4 +1,4 @@
-import { Pegawai, User, PengajuanKGB, NotificationItem, EmailDispatchLog } from '../types';
+import { Pegawai, User, PengajuanKGB, NotificationItem, EmailDispatchLog, TemplateDokumen } from '../types';
 
 export const INITIAL_PEGAWAI: Pegawai[] = [
   {
@@ -422,4 +422,130 @@ export const GOLONGAN_OPTIONS = [
   'Pembina / IV/a',
   'Pembina Tk. I / IV/b',
   'Pembina Utama Muda / IV/c'
+];
+
+export const INITIAL_TEMPLATES: TemplateDokumen[] = [
+  {
+    id: 'tmpl-pengantar-provinsi',
+    nama: 'Surat Pengantar Usulan KGB ke Bawaslu Provinsi Jawa Barat',
+    deskripsi: 'Surat dinas resmi pengantar penyampaian berkas usulan kenaikan gaji berkala ke Bawaslu Provinsi.',
+    kategori: 'surat_pengantar',
+    formatNomor: '045.2/KP.04.00/JB-22/{BULAN}/{TAHUN}',
+    judulDokumen: 'SURAT PENGANTAR USULAN KENAIKAN GAJI BERKALA',
+    isiKonten: `Bersama ini kami sampaikan dengan hormat kelengkapan berkas usulan Kenaikan Gaji Berkala (KGB) Pegawai Negeri Sipil / Aparatur Sipil Negara pada Sekretariat Badan Pengawas Pemilihan Umum Kabupaten Subang atas nama:
+
+1. Nama Pegawai       : {NAMA_PEGAWAI}
+2. NIP / NIK          : {NIP}
+3. Pangkat / Golongan : {PANGKAT_GOLONGAN}
+4. Jabatan            : {JABATAN}
+5. Unit Kerja         : {UNIT_KERJA}
+6. TMT KGB Baru       : {TMT_KGB_BARU}
+7. Gaji Pokok Lama    : Rp {GAJI_POKOK_LAMA}
+8. Gaji Pokok Baru    : Rp {GAJI_POKOK_BARU}
+
+Sebagai bahan pertimbangan dan proses lebih lanjut di tingkat Bawaslu Provinsi Jawa Barat, bersama ini kami lampirkan:
+1. Salinan Surat Keputusan Kenaikan Pangkat Terakhir;
+2. Salinan Surat Pemberitahuan Kenaikan Gaji Berkala Terakhir;
+3. Salinan Penilaian Sasaran Kinerja Pegawai (SKP) 2 Tahun Terakhir dengan predikat minimal Baik;
+4. Lembar Hasil Disposisi / Verifikasi Berkas Kepegawaian Bawaslu Kabupaten Subang.
+
+Demikian surat pengantar ini kami sampaikan. Atas perhatian dan kerja sama yang baik, kami ucapkan terima kasih.`,
+    penandatanganNama: 'H. TATANG KOSWARA, S.Sos., M.Si',
+    penandatanganJabatan: 'Kepala Sekretariat Bawaslu Kabupaten Subang',
+    penandatanganNip: '197405121998031002',
+    tembusan: [
+      '1. Ketua Bawaslu Kabupaten Subang',
+      '2. Kepala Bagian Administrasi Bawaslu Provinsi Jawa Barat',
+      '3. Arsip Sub Bagian Kepegawaian & SDM'
+    ],
+    isDefault: true,
+    createdAt: '2026-01-01T00:00:00Z',
+  },
+  {
+    id: 'tmpl-sk-kgb',
+    nama: 'Surat Pemberitahuan Kenaikan Gaji Berkala (SK KGB)',
+    deskripsi: 'Format resmi surat penetapan hak kenaikan gaji berkala pegawai setelah disetujui.',
+    kategori: 'sk_kgb',
+    formatNomor: '045.2/KP.04.00/JB-22/{BULAN}/{TAHUN}',
+    judulDokumen: 'SURAT PEMBERITAHUAN KENAIKAN GAJI BERKALA',
+    isiKonten: `Dengan ini diberitahukan bahwa berhubung telah dipenuhinya masa kerja dan syarat-syarat lainnya kepada:
+
+1. Nama Pegawai             : {NAMA_PEGAWAI}
+2. NIP / NIK                : {NIP}
+3. Pangkat / Golongan Ruang : {PANGKAT_GOLONGAN}
+4. Jabatan                  : {JABATAN}
+5. Unit Kerja               : {UNIT_KERJA}
+
+Diberikan Kenaikan Gaji Berkala hingga memperoleh:
+a. Gaji Pokok Baru          : Rp {GAJI_POKOK_BARU}
+b. Berdasarkan Masa Kerja   : Masa Kerja Golongan Sesuai Regulasi
+c. Mulai Terhitung Tanggal  : {TMT_KGB_BARU}
+
+Diharapkan kepada pejabat yang berwenang membayarkan penghasilan agar dapat menyesuaikan pembayaran gaji pegawai yang bersangkutan sesuai dengan peraturan perundang-undangan yang berlaku.`,
+    penandatanganNama: 'H. TATANG KOSWARA, S.Sos., M.Si',
+    penandatanganJabatan: 'Kepala Sekretariat Bawaslu Kabupaten Subang',
+    penandatanganNip: '197405121998031002',
+    tembusan: [
+      '1. Kepala Kantor Pelayanan Perbendaharaan Negara (KPPN)',
+      '2. Pejabat Pembuat Komitmen (PPK) Bawaslu Kabupaten Subang',
+      '3. Bendahara Pengeluaran Bawaslu Kabupaten Subang',
+      '4. Pegawai yang bersangkutan'
+    ],
+    isDefault: true,
+    createdAt: '2026-01-01T00:00:00Z',
+  },
+  {
+    id: 'tmpl-disposisi',
+    nama: 'Lembar Telaah Verifikasi & Disposisi Berkas',
+    deskripsi: 'Lembar telaah kelayakan berkas persyaratan KGB oleh verifikator kepegawaian dan atasan langsung.',
+    kategori: 'disposisi',
+    formatNomor: 'DISP/KP.04.00/{BULAN}/{TAHUN}',
+    judulDokumen: 'LEMBAR TELAAH VERIFIKASI & DISPOSISI BERKAS KGB',
+    isiKonten: `Telah dilakukan verifikasi berkas usulan Kenaikan Gaji Berkala terhadap pegawai:
+- Nama Pegawai : {NAMA_PEGAWAI}
+- NIP          : {NIP}
+- Jabatan      : {JABATAN}
+- Unit Kerja   : {UNIT_KERJA}
+
+Catatan Hasil Verifikasi:
+1. Masa kerja 2 tahun telah terpenuhi terhitung sejak TMT KGB terakhir.
+2. Predikat SKP (Sasaran Kinerja Pegawai) bernilai minimal BAIK.
+3. Seluruh berkas digital telah diperiksa keabsahannya.
+
+Rekomendasi Petugas Verifikator:
+Memenuhi syarat untuk diproses penerbitan Kenaikan Gaji Berkala (KGB) dan/atau diteruskan ke tingkat yang berwenang.`,
+    penandatanganNama: 'Administrator Kepegawaian Bawaslu Subang',
+    penandatanganJabatan: 'Staf Sub Bagian Administrasi & SDM',
+    penandatanganNip: '198503202012011001',
+    tembusan: ['Arsip Kepegawaian'],
+    isDefault: true,
+    createdAt: '2026-01-01T00:00:00Z',
+  },
+  {
+    id: 'tmpl-tanda-terima',
+    nama: 'Tanda Terima Berkas Elektronik',
+    deskripsi: 'Bukti resmi penyerahan dan penerimaan dokumen persyaratan KGB digital.',
+    kategori: 'tanda_terima',
+    formatNomor: 'TND/KGB/{BULAN}/{TAHUN}',
+    judulDokumen: 'BUKTI TANDA TERIMA PENGAJUAN KGB ELEKTRONIK',
+    isiKonten: `Telah diterima berkas permohonan Kenaikan Gaji Berkala melalui Sistem Informasi SI-KGB Bawaslu Kabupaten Subang:
+
+- Nomor Registrasi : {NOMOR_SURAT}
+- Nama Pemohon     : {NAMA_PEGAWAI}
+- NIP              : {NIP}
+- Jabatan          : {JABATAN}
+- Tanggal Terima   : {TANGGAL_SURAT}
+
+Kelengkapan Berkas Terlampir:
+[✓] Salinan SK Kenaikan Pangkat Terakhir
+[✓] Salinan SK Kenaikan Gaji Berkala Terakhir
+[✓] Dokumen Penilaian Prestasi Kerja / SKP 2 Tahun Terakhir
+
+Tanda terima ini merupakan bukti sah bahwa berkas telah masuk dalam antrean verifikasi administrasi kepegawaian.`,
+    penandatanganNama: 'Sub Bagian Administrasi Bawaslu Subang',
+    penandatanganJabatan: 'Petugas Pelayanan Terpadu Satu Pintu',
+    penandatanganNip: '198906152015031002',
+    isDefault: true,
+    createdAt: '2026-01-01T00:00:00Z',
+  }
 ];

@@ -1,23 +1,20 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   BarChart3,
-  Download,
   Printer,
   Calendar,
   Filter,
-  FileSpreadsheet,
   Building2,
   CheckCircle2,
-  Stamp,
 } from 'lucide-react';
 import { PengajuanKGB, Pegawai, KopSuratConfig, TandaTanganCapConfig } from '../../types';
 import { DIVISI_OPTIONS } from '../../data/seedData';
 import { getKopSuratConfig, getTandaTanganCapConfig } from '../../services/storage';
+import { printElementDirect } from '../../services/printService';
 import { BawasluLogo } from '../BawasluLogo';
 import { KopSuratHeader } from '../KopSuratHeader';
 import { KopSuratModal } from './KopSuratModal';
 import { TandaTanganCapBlock } from '../TandaTanganCapBlock';
-import { TandaTanganCapModal } from './TandaTanganCapModal';
 
 interface LaporanKgbProps {
   pengajuanList: PengajuanKGB[];
@@ -33,7 +30,7 @@ export const LaporanKgb: React.FC<LaporanKgbProps> = ({ pengajuanList, pegawaiLi
   const [kopConfig, setKopConfig] = useState<KopSuratConfig>(getKopSuratConfig());
   const [isKopModalOpen, setIsKopModalOpen] = useState(false);
   const [ttdCapConfig, setTtdCapConfig] = useState<TandaTanganCapConfig>(getTandaTanganCapConfig());
-  const [isTtdModalOpen, setIsTtdModalOpen] = useState(false);
+  const reportRef = useRef<HTMLDivElement>(null);
 
   // Filtered dataset
   const filteredData = pengajuanList.filter((item) => {
@@ -49,46 +46,12 @@ export const LaporanKgb: React.FC<LaporanKgbProps> = ({ pengajuanList, pegawaiLi
   const countPending = filteredData.filter((i) => i.status === 'menunggu_verifikasi').length;
   const countRevision = filteredData.filter((i) => i.status === 'perlu_perbaikan').length;
 
-  // Export CSV
-  const handleExportCsv = () => {
-    const headers = [
-      'No. Registrasi',
-      'Nama Pemohon',
-      'NIP',
-      'Jabatan',
-      'Divisi / Unit Kerja',
-      'Periode KGB',
-      'TMT KGB',
-      'Status',
-      'Nomor SK Diterbitkan',
-      'Tanggal Pengajuan',
-    ];
-
-    const rows = filteredData.map((d) => [
-      `"${d.noPengajuan}"`,
-      `"${d.namaPemohon}"`,
-      `"'${d.nipPemohon}"`,
-      `"${d.jabatanPemohon}"`,
-      `"${d.divisiPemohon}"`,
-      `"${d.periodeKgb}"`,
-      `"${d.tmtKgbBaru}"`,
-      `"${d.status.toUpperCase()}"`,
-      `"${d.nomorSkKgbDiterbitkan || '-'}"`,
-      `"${new Date(d.tanggalPengajuan).toLocaleDateString('id-ID')}"`,
-    ]);
-
-    const csvContent = 'data:text/csv;charset=utf-8,\uFEFF' + [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `Laporan_KGB_Bawaslu_Subang_${new Date().toISOString().split('T')[0]}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
   const handlePrint = () => {
-    window.print();
+    if (reportRef.current) {
+      printElementDirect(reportRef.current, `Laporan_Rekap_KGB_Bawaslu_${startDate}_sd_${endDate}`);
+    } else {
+      window.print();
+    }
   };
 
   return (
@@ -100,11 +63,11 @@ export const LaporanKgb: React.FC<LaporanKgbProps> = ({ pengajuanList, pegawaiLi
             Laporan Kenaikan Gaji Berkala (KGB)
           </h1>
           <p className="text-xs text-slate-500 mt-0.5">
-            Rekapitulasi berkas, penyerapan berkas per divisi, serta ekspor dokumen dan cetak rekap resmi.
+            Rekapitulasi berkas pengajuan KGB per divisi, pemantauan status, dan cetak laporan resmi.
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <button
             onClick={() => setIsKopModalOpen(true)}
             className="flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition"
@@ -114,26 +77,12 @@ export const LaporanKgb: React.FC<LaporanKgbProps> = ({ pengajuanList, pegawaiLi
             <span>Atur Kop Surat</span>
           </button>
           <button
-            onClick={() => setIsTtdModalOpen(true)}
-            className="flex items-center gap-1.5 rounded-lg border border-purple-200 bg-purple-50 px-3.5 py-2 text-xs font-semibold text-purple-800 hover:bg-purple-100 transition"
-            title="Atur Tanda Tangan Digital & Cap Stempel Dinas Resmi"
-          >
-            <Stamp className="h-4 w-4 text-purple-700" />
-            <span>Atur TTD &amp; Cap</span>
-          </button>
-          <button
-            onClick={handleExportCsv}
-            className="flex items-center gap-1.5 rounded-lg border border-emerald-300 bg-emerald-50 px-3.5 py-2 text-xs font-semibold text-emerald-800 hover:bg-emerald-100"
-          >
-            <FileSpreadsheet className="h-4 w-4 text-emerald-600" />
-            <span>Ekspor CSV / Excel</span>
-          </button>
-          <button
             onClick={handlePrint}
-            className="flex items-center gap-1.5 rounded-lg bg-slate-900 px-3.5 py-2 text-xs font-semibold text-white hover:bg-slate-800"
+            className="flex items-center gap-1.5 rounded-lg bg-indigo-700 hover:bg-indigo-800 px-4 py-2 text-xs font-bold text-white shadow transition"
+            title="Cetak langsung laporan atau simpan sebagai PDF melalui dialog cetak"
           >
             <Printer className="h-4 w-4" />
-            <span>Cetak Rekap Laporan</span>
+            <span>Cetak Laporan</span>
           </button>
         </div>
       </div>
@@ -222,7 +171,10 @@ export const LaporanKgb: React.FC<LaporanKgbProps> = ({ pengajuanList, pegawaiLi
       </div>
 
       {/* REPORT CONTENT & PRINTABLE CONTAINER */}
-      <div className="rounded-xl border border-slate-200 bg-white p-6 sm:p-8 shadow-2xs print:border-none print:shadow-none print:p-0">
+      <div
+        ref={reportRef}
+        className="rounded-xl border border-slate-200 bg-white p-6 sm:p-8 shadow-2xs print:border-none print:shadow-none print:p-0"
+      >
         {/* Printable Letterhead Dinamis */}
         <KopSuratHeader config={kopConfig} isCompact={true} />
 
@@ -295,7 +247,7 @@ export const LaporanKgb: React.FC<LaporanKgbProps> = ({ pengajuanList, pegawaiLi
 
         {/* Signature Block (Printable) */}
         <div className="mt-12 flex justify-end print-break-inside-avoid">
-          <TandaTanganCapBlock config={ttdCapConfig} align="right" />
+          <TandaTanganCapBlock config={ttdCapConfig} align="right" mode="pimpinan_saja" />
         </div>
       </div>
 
@@ -304,14 +256,9 @@ export const LaporanKgb: React.FC<LaporanKgbProps> = ({ pengajuanList, pegawaiLi
         isOpen={isKopModalOpen}
         onClose={() => setIsKopModalOpen(false)}
         onSaved={(newCfg) => setKopConfig(newCfg)}
+        isAdmin={true}
       />
 
-      {/* TANDA TANGAN & CAP CONFIGURATION MODAL */}
-      <TandaTanganCapModal
-        isOpen={isTtdModalOpen}
-        onClose={() => setIsTtdModalOpen(false)}
-        onSaved={(newCfg) => setTtdCapConfig(newCfg)}
-      />
     </div>
   );
 };

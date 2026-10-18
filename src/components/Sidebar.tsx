@@ -16,7 +16,6 @@ import {
   KeyRound,
   UserCheck,
   FileCode,
-  Stamp,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -24,11 +23,11 @@ interface SidebarProps {
   currentTab: string;
   onSelectTab: (tab: string) => void;
   pendingCount: number;
-  onOpenSupabaseModal: () => void;
-  onOpenEmailLogs: () => void;
+  hasOngoingPengajuan?: boolean;
+  onOpenSupabaseModal?: () => void;
+  onOpenEmailLogs?: () => void;
   onOpenUbahPassword: () => void;
   onOpenKopSuratModal?: () => void;
-  onOpenTtdCapModal?: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -36,11 +35,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
   currentTab,
   onSelectTab,
   pendingCount,
+  hasOngoingPengajuan = false,
   onOpenSupabaseModal,
   onOpenEmailLogs,
   onOpenUbahPassword,
   onOpenKopSuratModal,
-  onOpenTtdCapModal,
 }) => {
   const adminMenuItems = [
     {
@@ -98,7 +97,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       id: 'ajukan',
       label: 'Ajukan Permohonan',
       icon: FilePlus2,
-      badge: null,
+      badge: hasOngoingPengajuan ? 'Diproses' : null,
     },
     {
       id: 'riwayat',
@@ -191,26 +190,30 @@ export const Sidebar: React.FC<SidebarProps> = ({
               Integrasi & Utilitas
             </div>
             <div className="space-y-1">
-              <button
-                onClick={onOpenSupabaseModal}
-                className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-              >
-                <div className="flex items-center gap-2.5">
-                  <Database className="h-4 w-4 text-emerald-600" />
-                  <span>Koneksi Supabase</span>
-                </div>
-                <ChevronRight className="h-3.5 w-3.5 text-slate-400" />
-              </button>
-              <button
-                onClick={onOpenEmailLogs}
-                className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-              >
-                <div className="flex items-center gap-2.5">
-                  <Mail className="h-4 w-4 text-sky-600" />
-                  <span>Log Email Notifikasi</span>
-                </div>
-                <ChevronRight className="h-3.5 w-3.5 text-slate-400" />
-              </button>
+              {onOpenSupabaseModal && (
+                <button
+                  onClick={onOpenSupabaseModal}
+                  className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <Database className="h-4 w-4 text-emerald-600" />
+                    <span>Koneksi Supabase</span>
+                  </div>
+                  <ChevronRight className="h-3.5 w-3.5 text-slate-400" />
+                </button>
+              )}
+              {onOpenEmailLogs && (
+                <button
+                  onClick={onOpenEmailLogs}
+                  className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <Mail className="h-4 w-4 text-sky-600" />
+                    <span>Log Email Notifikasi</span>
+                  </div>
+                  <ChevronRight className="h-3.5 w-3.5 text-slate-400" />
+                </button>
+              )}
               {onOpenKopSuratModal && (
                 <button
                   onClick={onOpenKopSuratModal}
@@ -219,18 +222,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   <div className="flex items-center gap-2.5">
                     <Building2 className="h-4 w-4 text-amber-600" />
                     <span>Pengaturan Kop Surat</span>
-                  </div>
-                  <ChevronRight className="h-3.5 w-3.5 text-slate-400" />
-                </button>
-              )}
-              {onOpenTtdCapModal && (
-                <button
-                  onClick={onOpenTtdCapModal}
-                  className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <Stamp className="h-4 w-4 text-purple-600" />
-                    <span>Tanda Tangan &amp; Cap</span>
                   </div>
                   <ChevronRight className="h-3.5 w-3.5 text-slate-400" />
                 </button>

@@ -69,3 +69,19 @@ export const DEFAULT_TANDA_TANGAN_SVG = `data:image/svg+xml;utf8,${encodeURIComp
   </g>
 </svg>
 `)}`;
+
+// Default blue ink signature for Kasubag Administrasi (Dimas Ebo Suhartono, S.AP)
+export const DEFAULT_TANDA_TANGAN_KASUBAG_SVG = `data:image/svg+xml;utf8,${encodeURIComponent(`
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 120" width="320" height="120">
+  <g fill="none" stroke="#1e40af" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Distinct cursive flourish for initial "D" -->
+    <path d="M 50,25 C 50,60 48,85 52,95 C 60,98 85,96 115,80 C 145,62 140,28 100,26 C 75,25 52,48 50,60" stroke-width="3.2" stroke-opacity="0.92" />
+    <!-- Loop transition -->
+    <path d="M 98,65 C 115,55 130,58 142,75 C 150,85 160,70 172,60 C 182,52 195,65 205,58 C 215,52 225,60 235,55" stroke-width="2.6" stroke-opacity="0.9" />
+    <circle cx="144" cy="48" r="2.2" fill="#1e40af" fill-opacity="0.9" />
+    
+    <!-- Underline slash flourish -->
+    <path d="M 65,95 C 120,92 190,88 265,82 C 280,80 288,86 278,94 C 250,105 180,104 110,100" stroke-width="2.8" stroke-opacity="0.88" />
+  </g>
+</svg>
+`)}`;

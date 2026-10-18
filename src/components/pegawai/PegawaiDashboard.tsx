@@ -34,9 +34,17 @@ export const PegawaiDashboard: React.FC<PegawaiDashboardProps> = ({
   onViewPengajuan,
   onOpenUbahPassword,
 }) => {
-  // Filter submissions by this employee
-  const mySubmissions = pengajuanList.filter((p) => p.pegawaiId === pegawai.id);
+  // Filter submissions by this employee, sorted by date descending
+  const mySubmissions = [...pengajuanList.filter((p) => p.pegawaiId === pegawai.id)].sort(
+    (a, b) => new Date(b.tanggalPengajuan).getTime() - new Date(a.tanggalPengajuan).getTime()
+  );
   const activeSubmission = mySubmissions[0]; // Latest
+
+  // Employee can only submit KGB again when all previous submissions are approved or rejected
+  const ongoingSubmission = mySubmissions.find(
+    (p) => p.status !== 'disetujui' && p.status !== 'ditolak'
+  );
+  const canSubmitKgb = !ongoingSubmission;
 
   // Calculate days until next KGB
   const today = new Date();
@@ -90,13 +98,27 @@ export const PegawaiDashboard: React.FC<PegawaiDashboardProps> = ({
                 <span>Ubah Password</span>
               </button>
             )}
-            <button
-              onClick={() => onSelectTab('ajukan')}
-              className="flex items-center gap-1.5 rounded-lg bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800 shadow-xs"
-            >
-              <FilePlus2 className="h-4 w-4" />
-              <span>Ajukan Permohonan KGB</span>
-            </button>
+            {canSubmitKgb ? (
+              <button
+                onClick={() => onSelectTab('ajukan')}
+                className="flex items-center gap-1.5 rounded-lg bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800 shadow-xs"
+              >
+                <FilePlus2 className="h-4 w-4" />
+                <span>Ajukan Permohonan KGB</span>
+              </button>
+            ) : (
+              <button
+                onClick={() => {
+                  if (ongoingSubmission) onViewPengajuan(ongoingSubmission);
+                  onSelectTab('riwayat');
+                }}
+                className="flex items-center gap-1.5 rounded-lg border border-amber-300 bg-amber-50 px-3.5 py-2 text-xs font-semibold text-amber-900 hover:bg-amber-100 shadow-xs"
+                title="Pengajuan KGB sebelumnya sedang dalam proses. Klik untuk melihat perkembangan."
+              >
+                <Clock className="h-4 w-4 text-amber-600" />
+                <span>Pengajuan Sedang Berjalan</span>
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -166,20 +188,42 @@ export const PegawaiDashboard: React.FC<PegawaiDashboardProps> = ({
                   Masih tersisa {diffDays} hari hingga periode kenaikan gaji berkala Anda berikutnya.
                 </p>
               )}
+
+              {ongoingSubmission && (
+                <div className="mt-3 rounded-lg bg-amber-100/70 border border-amber-300/80 p-2.5 text-xs text-amber-950 flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4 text-amber-700 shrink-0" />
+                  <span>
+                    Anda memiliki berkas KGB aktif (<strong>{ongoingSubmission.noPengajuan}</strong>) yang sedang dalam proses verifikasi. Permohonan KGB baru dapat diajukan setelah berkas ini disetujui atau ditolak.
+                  </span>
+                </div>
+              )}
             </div>
           </div>
 
           <div className="shrink-0">
-            <button
-              onClick={() => onSelectTab('ajukan')}
-              className={`rounded-lg px-4 py-2 text-xs font-bold transition shadow-xs ${
-                isKgbSoon
-                  ? 'bg-amber-600 text-white hover:bg-amber-700'
-                  : 'border border-slate-300 bg-white text-slate-800 hover:bg-slate-50'
-              }`}
-            >
-              Ajukan KGB Sekarang
-            </button>
+            {canSubmitKgb ? (
+              <button
+                onClick={() => onSelectTab('ajukan')}
+                className={`rounded-lg px-4 py-2 text-xs font-bold transition shadow-xs ${
+                  isKgbSoon
+                    ? 'bg-amber-600 text-white hover:bg-amber-700'
+                    : 'border border-slate-300 bg-white text-slate-800 hover:bg-slate-50'
+                }`}
+              >
+                Ajukan KGB Sekarang
+              </button>
+            ) : (
+              <button
+                onClick={() => {
+                  if (ongoingSubmission) onViewPengajuan(ongoingSubmission);
+                  onSelectTab('riwayat');
+                }}
+                className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-2 text-xs font-semibold text-amber-900 hover:bg-amber-100 transition shadow-xs flex items-center gap-1.5"
+              >
+                <Clock className="h-3.5 w-3.5 text-amber-600" />
+                <span>Pengajuan Sedang Berjalan</span>
+              </button>
+            )}
           </div>
         </div>
       </div>

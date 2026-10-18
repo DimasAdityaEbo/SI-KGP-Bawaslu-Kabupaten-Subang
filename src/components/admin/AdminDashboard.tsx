@@ -17,7 +17,6 @@ import {
   Check,
   BellRing,
   FileCode,
-  Stamp,
 } from 'lucide-react';
 import { Pegawai, PengajuanKGB, PengajuanStatus, EmailDispatchLog } from '../../types';
 import {
@@ -26,7 +25,6 @@ import {
   createGmailComposeUrl,
   createMailtoUrl,
 } from '../../services/emailService';
-import { TandaTanganCapModal } from './TandaTanganCapModal';
 
 interface AdminDashboardProps {
   pegawaiList: Pegawai[];
@@ -46,7 +44,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [sendingReminderId, setSendingReminderId] = useState<string | null>(null);
   const [reminderSuccess, setReminderSuccess] = useState<string | null>(null);
   const [isSendingBatch, setIsSendingBatch] = useState(false);
-  const [isTtdModalOpen, setIsTtdModalOpen] = useState(false);
 
   // Reminder Success Modal State
   const [reminderSuccessModal, setReminderSuccessModal] = useState<{
@@ -196,14 +193,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <button
-            onClick={() => setIsTtdModalOpen(true)}
-            className="flex items-center gap-1.5 rounded-lg border border-purple-200 bg-purple-50 px-3 py-1.5 text-xs font-semibold text-purple-800 hover:bg-purple-100 transition"
-            title="Pengaturan Tanda Tangan Digital & Cap Stempel Dinas Resmi"
-          >
-            <Stamp className="h-3.5 w-3.5 text-purple-700" />
-            <span>Atur TTD &amp; Cap</span>
-          </button>
           <button
             onClick={() => onSelectTab('template')}
             className="flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition"
@@ -697,11 +686,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         </div>
       )}
 
-      {/* TANDA TANGAN & CAP CONFIGURATION MODAL */}
-      <TandaTanganCapModal
-        isOpen={isTtdModalOpen}
-        onClose={() => setIsTtdModalOpen(false)}
-      />
     </div>
   );
 };

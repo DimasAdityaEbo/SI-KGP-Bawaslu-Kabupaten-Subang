@@ -19,9 +19,10 @@ import {
   Copy,
   Check,
   Calendar,
+  Trash2,
 } from 'lucide-react';
 import { PengajuanKGB, Pegawai, PengajuanStatus, DokumenLampiran, EmailDispatchLog } from '../../types';
-import { savePengajuan, savePegawai } from '../../services/storage';
+import { savePengajuan, savePegawai, deletePengajuan } from '../../services/storage';
 import {
   sendKgbStatusEmail,
   generateKgbEmailPlainText,
@@ -78,7 +79,29 @@ export const DaftarPengajuan: React.FC<DaftarPengajuanProps> = ({
 
   // Print modal state
   const [printModalOpen, setPrintModalOpen] = useState(false);
-  const [printMode, setPrintMode] = useState<'disposisi' | 'sk_kgb' | 'tanda_terima'>('disposisi');
+  const [printMode, setPrintMode] = useState<'surat_pengantar' | 'tanda_terima'>('surat_pengantar');
+
+  // Delete pengajuan state
+  const [deleteTarget, setDeleteTarget] = useState<PengajuanKGB | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return;
+    setIsDeleting(true);
+    try {
+      await deletePengajuan(deleteTarget.id);
+      if (activePengajuan?.id === deleteTarget.id) {
+        setActivePengajuan(null);
+      }
+      setDeleteTarget(null);
+      onRefreshData();
+    } catch (err: any) {
+      console.error('Error deleting pengajuan:', err);
+      alert(`Gagal menghapus pengajuan: ${err?.message || 'Terjadi kesalahan sistem'}`);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   const handleOpenDetail = (item: PengajuanKGB) => {
     setActivePengajuan(item);
@@ -220,7 +243,7 @@ export const DaftarPengajuan: React.FC<DaftarPengajuanProps> = ({
     }
   };
 
-  const handleOpenPrint = (mode: 'disposisi' | 'sk_kgb' | 'tanda_terima') => {
+  const handleOpenPrint = (mode: 'surat_pengantar' | 'tanda_terima') => {
     setPrintMode(mode);
     setPrintModalOpen(true);
   };
@@ -286,7 +309,7 @@ export const DaftarPengajuan: React.FC<DaftarPengajuanProps> = ({
             Daftar Pengajuan Kenaikan Gaji Berkala (KGB)
           </h1>
           <p className="text-xs text-slate-500 mt-0.5">
-            Verifikasi berkas, persetujuan, penerbitan lembar disposisi, dan integrasi pengiriman email resmi.
+            Verifikasi berkas, persetujuan, penerbitan surat pengantar usulan KGB ke provinsi, dan tanda terima digital.
           </p>
         </div>
       </div>
@@ -376,13 +399,22 @@ export const DaftarPengajuan: React.FC<DaftarPengajuanProps> = ({
                     </td>
                     <td className="py-3 px-4">{getStatusBadge(item.status)}</td>
                     <td className="py-3 px-4 text-right">
-                      <button
-                        onClick={() => handleOpenDetail(item)}
-                        className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 font-semibold text-slate-800 hover:bg-slate-100 shadow-2xs"
-                      >
-                        <Eye className="h-3.5 w-3.5 text-slate-500" />
-                        <span>Detail & Verifikasi</span>
-                      </button>
+                      <div className="flex items-center justify-end gap-1.5">
+                        <button
+                          onClick={() => handleOpenDetail(item)}
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 font-semibold text-slate-800 hover:bg-slate-100 shadow-2xs"
+                        >
+                          <Eye className="h-3.5 w-3.5 text-slate-500" />
+                          <span>Detail &amp; Verifikasi</span>
+                        </button>
+                        <button
+                          onClick={() => setDeleteTarget(item)}
+                          className="inline-flex items-center justify-center rounded-lg border border-red-200 bg-red-50 p-2 text-red-600 hover:bg-red-100 hover:border-red-300 transition"
+                          title={`Hapus Berkas Pengajuan ${item.noPengajuan}`}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -727,30 +759,35 @@ export const DaftarPengajuan: React.FC<DaftarPengajuanProps> = ({
                 </div>
               </div>
 
-              {/* ACTION PRINTING OPTIONS */}
-              <div className="flex flex-wrap items-center justify-between gap-2 border-t pt-4">
-                <span className="font-semibold text-slate-700">Cetak Dokumen Resmi:</span>
+              {/* ACTION PRINTING & DELETE OPTIONS */}
+              <div className="flex flex-wrap items-center justify-between gap-3 border-t pt-4">
+                <button
+                  type="button"
+                  onClick={() => setDeleteTarget(activePengajuan)}
+                  className="flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-100 transition shadow-2xs"
+                  title="Hapus berkas permohonan pengajuan KGB ini"
+                >
+                  <Trash2 className="h-3.5 w-3.5 text-red-600" />
+                  <span>Hapus Pengajuan</span>
+                </button>
+
                 <div className="flex items-center gap-2">
+                  <span className="font-semibold text-slate-700 mr-1">Cetak Dokumen:</span>
                   <button
                     onClick={() => handleOpenPrint('tanda_terima')}
-                    className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                    className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition shadow-2xs"
+                    title="Cetak Bukti Tanda Terima Pengajuan Berkas"
                   >
-                    <Printer className="h-3.5 w-3.5" />
+                    <Printer className="h-3.5 w-3.5 text-sky-600" />
                     <span>Tanda Terima</span>
                   </button>
                   <button
-                    onClick={() => handleOpenPrint('disposisi')}
-                    className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                    onClick={() => handleOpenPrint('surat_pengantar')}
+                    className="flex items-center gap-1.5 rounded-lg bg-indigo-700 px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-indigo-800 transition shadow-xs"
+                    title="Cetak Surat Pengantar Usulan KGB ke Bawaslu Provinsi"
                   >
                     <Printer className="h-3.5 w-3.5" />
-                    <span>Lembar Disposisi</span>
-                  </button>
-                  <button
-                    onClick={() => handleOpenPrint('sk_kgb')}
-                    className="flex items-center gap-1.5 rounded-lg bg-amber-600 px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-amber-700"
-                  >
-                    <Printer className="h-3.5 w-3.5" />
-                    <span>Surat Pemberitahuan KGB</span>
+                    <span>Surat Pengantar</span>
                   </button>
                 </div>
               </div>
@@ -767,6 +804,7 @@ export const DaftarPengajuan: React.FC<DaftarPengajuanProps> = ({
           pengajuan={activePengajuan}
           pegawai={pegawaiList.find((p) => p.id === activePengajuan.pegawaiId)}
           mode={printMode}
+          isAdmin={true}
         />
       )}
 
@@ -908,6 +946,61 @@ export const DaftarPengajuan: React.FC<DaftarPengajuanProps> = ({
                 className="rounded-lg bg-slate-900 px-5 py-2 text-xs font-bold text-white hover:bg-slate-800 transition shadow"
               >
                 Selesai &amp; Kembali ke Daftar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ================= MODAL KONFIRMASI HAPUS PENGAJUAN ================= */}
+      {deleteTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs">
+          <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl text-xs space-y-4 animate-in fade-in zoom-in-95">
+            <div className="flex items-start gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-red-100 text-red-600">
+                <AlertTriangle className="h-5 w-5" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-sm font-bold text-slate-900">
+                  Hapus Berkas Pengajuan KGB?
+                </h3>
+                <p className="text-slate-600 leading-relaxed text-[11px]">
+                  Anda akan menghapus berkas pengajuan <strong>{deleteTarget.noPengajuan}</strong> atas nama <strong>{deleteTarget.namaPemohon}</strong>. Tindakan ini permanen dan tidak dapat dibatalkan.
+                </p>
+              </div>
+            </div>
+
+            <div className="rounded-xl bg-slate-50 border border-slate-200 p-3 space-y-1 text-[11px] text-slate-600">
+              <div className="flex justify-between">
+                <span>NIP Pemohon:</span>
+                <span className="font-mono font-semibold text-slate-800">{deleteTarget.nipPemohon}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Perihal:</span>
+                <span className="font-semibold text-slate-800">{deleteTarget.perihal}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Status Saat Ini:</span>
+                <span className="font-semibold text-slate-800">{deleteTarget.status}</span>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setDeleteTarget(null)}
+                className="rounded-lg border border-slate-300 px-4 py-2 font-semibold text-slate-700 hover:bg-slate-50 transition"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={handleConfirmDelete}
+                className="flex items-center gap-1.5 rounded-lg bg-red-600 px-4 py-2 font-bold text-white hover:bg-red-700 transition shadow disabled:opacity-50"
+              >
+                <Trash2 className="h-4 w-4" />
+                <span>{isDeleting ? 'Menghapus...' : 'Ya, Hapus Pengajuan'}</span>
               </button>
             </div>
           </div>

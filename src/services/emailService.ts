@@ -86,7 +86,7 @@ export function generateKgbEmailHtml(params: {
       ` : ''}
 
       <p style="font-size: 12px; color: #64748b; margin-top: 24px; line-height: 1.5;">
-        Anda dapat memantau status secara langsung atau mengunduh lembar bukti disposisi melalui portal resmi SI-KGB Bawaslu Kabupaten Subang.
+        Anda dapat memantau status secara langsung atau mengunduh lembar tanda terima dan surat pengantar melalui portal resmi SI-KGB Bawaslu Kabupaten Subang.
       </p>
     </div>
     <div class="footer">
@@ -124,7 +124,7 @@ ${params.message}
 Status Terkini: ${params.statusLabel}
 Nomor Registrasi: ${params.noPengajuan}
 ${params.tmtKgb ? `TMT KGB Disetujui: ${params.tmtKgb}\n` : ''}${params.nextKgbJadwal ? `Jadwal KGB Berikutnya (2 Tahun): ${params.nextKgbJadwal}\n` : ''}${params.nomorSk ? `Nomor Surat SK / Rekomendasi: ${params.nomorSk}\n` : ''}${params.catatan ? `Catatan Petugas Kepegawaian: "${params.catatan}"\n` : ''}
-Anda dapat memantau status secara langsung atau mengunduh lembar bukti disposisi melalui portal resmi SI-KGB Bawaslu Kabupaten Subang.
+Anda dapat memantau status secara langsung atau mengunduh lembar tanda terima dan surat pengantar melalui portal resmi SI-KGB Bawaslu Kabupaten Subang.
 
 Sekretariat Bawaslu Kabupaten Subang
 Surel Resmi: kepegawaian@bawaslu-subang.go.id`.trim();

@@ -43,6 +43,7 @@ export const SupabaseModal: React.FC<SupabaseModalProps> = ({
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
   const [copiedSql, setCopiedSql] = useState(false);
+  const [copiedMigrationSql, setCopiedMigrationSql] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState<string | null>(null);
   const [showSqlPreview, setShowSqlPreview] = useState(false);
@@ -126,6 +127,15 @@ export const SupabaseModal: React.FC<SupabaseModalProps> = ({
     navigator.clipboard.writeText(SUPABASE_SQL_SCHEMA);
     setCopiedSql(true);
     setTimeout(() => setCopiedSql(false), 2500);
+  };
+
+  const handleCopyMigrationSql = () => {
+    const migrationSql = `ALTER TABLE public.pengajuan_kgb DROP CONSTRAINT IF EXISTS pengajuan_kgb_status_check;
+ALTER TABLE public.pengajuan_kgb ADD CONSTRAINT pengajuan_kgb_status_check 
+  CHECK (status IN ('menunggu_verifikasi', 'dalam_proses', 'dikirim_ke_provinsi', 'perlu_perbaikan', 'disetujui', 'ditolak'));`;
+    navigator.clipboard.writeText(migrationSql);
+    setCopiedMigrationSql(true);
+    setTimeout(() => setCopiedMigrationSql(false), 2500);
   };
 
   const handleSyncSeedToSupabase = async () => {
@@ -393,6 +403,39 @@ export const SupabaseModal: React.FC<SupabaseModalProps> = ({
                 {SUPABASE_SQL_SCHEMA}
               </pre>
             )}
+
+            {/* Khusus Migrasi Status Bawaslu Provinsi */}
+            <div className="mt-3 rounded-lg border border-indigo-200 bg-indigo-50/70 p-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="inline-block rounded bg-indigo-100 px-1.5 py-0.5 text-[10px] font-bold text-indigo-800 uppercase tracking-wider mb-1">
+                    Migrasi Status Baru
+                  </span>
+                  <p className="text-xs font-bold text-indigo-950">
+                    Update Constraint Status (Kirim ke Bawaslu Provinsi)
+                  </p>
+                  <p className="text-[11px] text-indigo-700 mt-0.5">
+                    Sistem secara otomatis telah menangani kompatibilitas status. Jika ingin memperbarui constraint langsung di Supabase, jalankan 2 baris perintah SQL ini.
+                  </p>
+                </div>
+                <button
+                  onClick={handleCopyMigrationSql}
+                  className="flex items-center gap-1 shrink-0 rounded-md bg-indigo-600 px-2.5 py-1.5 text-[11px] font-semibold text-white hover:bg-indigo-700 shadow-sm"
+                >
+                  {copiedMigrationSql ? (
+                    <>
+                      <Check className="h-3.5 w-3.5 text-white" />
+                      <span>Tersalin!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="h-3.5 w-3.5" />
+                      <span>Salin SQL Migrasi</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
 

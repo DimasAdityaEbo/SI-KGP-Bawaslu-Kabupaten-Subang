@@ -34,26 +34,54 @@ export const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({
   };
 
   const handlePrint = () => {
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) {
+    // Avoid window.open which is blocked inside iframes
+    const iframe = window.document.createElement('iframe');
+    iframe.style.position = 'fixed';
+    iframe.style.right = '0';
+    iframe.style.bottom = '0';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.style.border = '0';
+    window.document.body.appendChild(iframe);
+
+    const doc = iframe.contentWindow?.document;
+    if (!doc) {
       window.print();
       return;
     }
-    printWindow.document.write(`
+    doc.open();
+    doc.write(`
+      <!DOCTYPE html>
       <html>
         <head>
           <title>${document.namaFile} - Bawaslu Subang</title>
           <style>
+            @page { margin: 10mm; }
             body { margin: 0; padding: 20px; font-family: sans-serif; display: flex; justify-content: center; }
             img { max-width: 100%; height: auto; }
           </style>
         </head>
         <body>
-          <img src="${dataUrl}" onload="window.print();window.close();" />
+          <img src="${dataUrl}" />
         </body>
       </html>
     `);
-    printWindow.document.close();
+    doc.close();
+
+    setTimeout(() => {
+      try {
+        iframe.contentWindow?.focus();
+        iframe.contentWindow?.print();
+      } catch (e) {
+        window.print();
+      } finally {
+        setTimeout(() => {
+          if (window.document.body.contains(iframe)) {
+            window.document.body.removeChild(iframe);
+          }
+        }, 3000);
+      }
+    }, 400);
   };
 
   const getDocBadgeLabel = () => {

@@ -261,4 +261,9 @@ CREATE POLICY "Akses anon penuh email_logs" ON public.email_logs FOR ALL USING (
 CREATE POLICY "Akses anon penuh kop_surat" ON public.pengaturan_kop_surat FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Akses anon penuh ttd_cap" ON public.pengaturan_ttd_cap FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Akses anon penuh templates" ON public.template_dokumen FOR ALL USING (true) WITH CHECK (true);
+
+-- Skrip migrasi jika tabel pengajuan_kgb sudah ada sebelumnya:
+ALTER TABLE public.pengajuan_kgb DROP CONSTRAINT IF EXISTS pengajuan_kgb_status_check;
+ALTER TABLE public.pengajuan_kgb ADD CONSTRAINT pengajuan_kgb_status_check 
+  CHECK (status IN ('menunggu_verifikasi', 'dalam_proses', 'dikirim_ke_provinsi', 'perlu_perbaikan', 'disetujui', 'ditolak'));
 `;

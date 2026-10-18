@@ -11,6 +11,8 @@ import {
   Eye,
   Info,
   Sparkles,
+  ShieldAlert,
+  Lock,
 } from 'lucide-react';
 import { KopSuratConfig } from '../../types';
 import {
@@ -18,6 +20,7 @@ import {
   saveKopSuratConfig,
   resetKopSuratConfig,
   DEFAULT_KOP_SURAT,
+  isCurrentUserAdmin,
 } from '../../services/storage';
 import { KopSuratHeader } from '../KopSuratHeader';
 
@@ -25,13 +28,16 @@ interface KopSuratModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSaved?: (newConfig: KopSuratConfig) => void;
+  isAdmin?: boolean;
 }
 
 export const KopSuratModal: React.FC<KopSuratModalProps> = ({
   isOpen,
   onClose,
   onSaved,
+  isAdmin,
 }) => {
+  const effectiveIsAdmin = isAdmin !== undefined ? isAdmin : isCurrentUserAdmin();
   const [config, setConfig] = useState<KopSuratConfig>(getKopSuratConfig());
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -48,6 +54,10 @@ export const KopSuratModal: React.FC<KopSuratModalProps> = ({
   if (!isOpen) return null;
 
   const handleImageFile = (file: File) => {
+    if (!effectiveIsAdmin) {
+      alert('Akses ditolak: Hanya Administrator yang berwenang mengubah logo Kop Surat.');
+      return;
+    }
     if (!file.type.startsWith('image/')) {
       alert('File harus berupa gambar (PNG, JPG, SVG, WebP)!');
       return;
@@ -72,6 +82,7 @@ export const KopSuratModal: React.FC<KopSuratModalProps> = ({
   };
 
   const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!effectiveIsAdmin) return;
     const file = e.target.files?.[0];
     if (file) {
       handleImageFile(file);
@@ -81,6 +92,7 @@ export const KopSuratModal: React.FC<KopSuratModalProps> = ({
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
+    if (!effectiveIsAdmin) return;
     const file = e.dataTransfer.files?.[0];
     if (file) {
       handleImageFile(file);
@@ -88,6 +100,10 @@ export const KopSuratModal: React.FC<KopSuratModalProps> = ({
   };
 
   const handleRemoveCustomLogo = () => {
+    if (!effectiveIsAdmin) {
+      alert('Akses ditolak: Hanya Administrator yang berwenang menghapus logo Kop Surat.');
+      return;
+    }
     setConfig((prev) => ({
       ...prev,
       logoUrl: '',
@@ -98,12 +114,16 @@ export const KopSuratModal: React.FC<KopSuratModalProps> = ({
   };
 
   const handleResetToDefault = () => {
+    if (!effectiveIsAdmin) {
+      alert('Akses ditolak: Hanya Administrator yang berwenang mereset Kop Surat.');
+      return;
+    }
     if (
       confirm(
         'Yakin ingin mengembalikan seluruh pengaturan kop surat ke format standar Bawaslu Kabupaten Subang?'
       )
     ) {
-      const reset = resetKopSuratConfig();
+      const reset = resetKopSuratConfig(true);
       setConfig(reset);
       setSuccessMsg('Kop surat berhasil direset ke standar Bawaslu Subang.');
       setTimeout(() => setSuccessMsg(null), 3000);
@@ -113,13 +133,17 @@ export const KopSuratModal: React.FC<KopSuratModalProps> = ({
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!effectiveIsAdmin) {
+      alert('Akses ditolak: Hanya Administrator yang berwenang mengubah Kop Surat.');
+      return;
+    }
 
     if (!config.namaInstansiUtama.trim()) {
       alert('Nama Instansi Utama wajib diisi!');
       return;
     }
 
-    const saved = saveKopSuratConfig(config);
+    const saved = saveKopSuratConfig(config, true);
     setSuccessMsg('Pengaturan Kop Surat berhasil disimpan!');
     if (onSaved) {
       onSaved(saved);
@@ -140,11 +164,24 @@ export const KopSuratModal: React.FC<KopSuratModalProps> = ({
               <Building2 className="h-5 w-5" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-slate-900">
-                Pengaturan Kop Surat & Identitas Naskah Dinas
-              </h2>
+              <div className="flex items-center gap-2">
+                <h2 className="text-base font-bold text-slate-900">
+                  Pengaturan Kop Surat &amp; Identitas Naskah Dinas
+                </h2>
+                {effectiveIsAdmin ? (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-0.5 text-[10px] font-bold text-emerald-800">
+                    <CheckCircle2 className="h-3 w-3" />
+                    Mode Admin (Akses Penuh)
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-0.5 text-[10px] font-bold text-amber-800">
+                    <Lock className="h-3 w-3" />
+                    Khusus Admin (Mode Baca)
+                  </span>
+                )}
+              </div>
               <p className="text-xs text-slate-500">
-                Sesuaikan nama instansi, alamat, kontak, dan logo untuk pencetakan dokumen dinas & SK KGB.
+                Sesuaikan nama instansi, alamat, kontak, dan logo untuk pencetakan dokumen dinas &amp; SK KGB.
               </p>
             </div>
           </div>
@@ -187,7 +224,20 @@ export const KopSuratModal: React.FC<KopSuratModalProps> = ({
             </div>
           </div>
 
+          {!effectiveIsAdmin && (
+            <div className="flex items-start gap-3 rounded-xl border border-amber-300 bg-amber-50 p-4 text-xs text-amber-900 shadow-xs">
+              <ShieldAlert className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+              <div>
+                <p className="font-bold text-amber-950">Akses Terbatas: Hanya Administrator yang Berwenang Mengubah Kop Surat</p>
+                <p className="mt-0.5 text-amber-800 leading-relaxed">
+                  Pengaturan identitas naskah dinas, alamat instansi, dan logo resmi hanya dapat diubah oleh Administrator Bawaslu demi menjaga keabsahan dokumen kenegaraan. Anda hanya dapat melihat pratinjau format yang sedang aktif.
+                </p>
+              </div>
+            </div>
+          )}
+
           <form onSubmit={handleSave} className="space-y-6">
+            <fieldset disabled={!effectiveIsAdmin} className="space-y-6">
             {/* SECTION 1: LOGO UPLOAD & ADJUSTMENT */}
             <div className="rounded-xl border border-slate-200 p-5 bg-white space-y-4">
               <div className="flex items-center justify-between border-b border-slate-100 pb-3">
@@ -428,33 +478,53 @@ export const KopSuratModal: React.FC<KopSuratModalProps> = ({
               </div>
             </div>
 
+            </fieldset>
+
             {/* Bottom Form Actions */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-2 border-t border-slate-200">
-              <button
-                type="button"
-                onClick={handleResetToDefault}
-                className="flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition"
-              >
-                <RotateCcw className="h-3.5 w-3.5 text-slate-500" />
-                <span>Reset ke Standar Bawaslu Subang</span>
-              </button>
+              {effectiveIsAdmin ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={handleResetToDefault}
+                    className="flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition"
+                  >
+                    <RotateCcw className="h-3.5 w-3.5 text-slate-500" />
+                    <span>Reset ke Standar Bawaslu Subang</span>
+                  </button>
 
-              <div className="flex items-center gap-2 justify-end">
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition"
-                >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  className="flex items-center gap-1.5 rounded-lg bg-slate-900 px-5 py-2 text-xs font-bold text-white hover:bg-slate-800 transition shadow"
-                >
-                  <CheckCircle2 className="h-4 w-4 text-emerald-400" />
-                  <span>Simpan Perubahan Kop Surat</span>
-                </button>
-              </div>
+                  <div className="flex items-center gap-2 justify-end">
+                    <button
+                      type="button"
+                      onClick={onClose}
+                      className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition"
+                    >
+                      Batal
+                    </button>
+                    <button
+                      type="submit"
+                      className="flex items-center gap-1.5 rounded-lg bg-slate-900 px-5 py-2 text-xs font-bold text-white hover:bg-slate-800 transition shadow"
+                    >
+                      <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+                      <span>Simpan Perubahan Kop Surat</span>
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <div className="flex items-center justify-between w-full">
+                  <span className="text-xs text-slate-500 italic flex items-center gap-1.5">
+                    <Lock className="h-3.5 w-3.5 text-slate-400" />
+                    Format kop surat dikunci (hanya dapat diubah oleh Administrator)
+                  </span>
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    className="rounded-lg bg-slate-900 px-5 py-2 text-xs font-bold text-white hover:bg-slate-800 transition shadow"
+                  >
+                    Tutup
+                  </button>
+                </div>
+              )}
             </div>
           </form>
         </div>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   FileText,
   Plus,
@@ -18,9 +18,16 @@ import {
   Layers,
   FileCode,
   Tag,
-  Stamp,
+  AlertTriangle,
 } from 'lucide-react';
-import { TemplateDokumen, TemplateKategori, Pegawai, PengajuanKGB, KopSuratConfig, TandaTanganCapConfig } from '../../types';
+import {
+  TemplateDokumen,
+  TemplateKategori,
+  Pegawai,
+  PengajuanKGB,
+  KopSuratConfig,
+  TandaTanganCapConfig,
+} from '../../types';
 import {
   getTemplatesList,
   saveTemplate,
@@ -29,11 +36,10 @@ import {
   getKopSuratConfig,
   getTandaTanganCapConfig,
 } from '../../services/storage';
-import { BawasluLogo } from '../BawasluLogo';
+import { printElementDirect } from '../../services/printService';
 import { KopSuratHeader } from '../KopSuratHeader';
 import { KopSuratModal } from './KopSuratModal';
 import { TandaTanganCapBlock } from '../TandaTanganCapBlock';
-import { TandaTanganCapModal } from './TandaTanganCapModal';
 
 interface TemplateDokumenViewProps {
   pegawaiList: Pegawai[];
@@ -90,18 +96,38 @@ export const TemplateDokumenView: React.FC<TemplateDokumenViewProps> = ({
   const [formPejabatJabatan, setFormPejabatJabatan] = useState('Kepala Sekretariat Bawaslu Kabupaten Subang');
   const [formPejabatNip, setFormPejabatNip] = useState('197405121998031002');
   const [formTembusan, setFormTembusan] = useState<string>('');
+  const [feedbackToast, setFeedbackToast] = useState<{ message: string; type: 'success' | 'info' | 'error' } | null>(null);
+
+  // Delete Confirmation Modal state
+  const [deleteTarget, setDeleteTarget] = useState<TemplateDokumen | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Preview Modal state
   const [previewTemplate, setPreviewTemplate] = useState<TemplateDokumen | null>(null);
   const [samplePegawaiId, setSamplePegawaiId] = useState<string>('');
+  const previewSheetRef = useRef<HTMLDivElement>(null);
+
+  const handlePrintPreview = () => {
+    if (previewSheetRef.current) {
+      printElementDirect(previewSheetRef.current, previewTemplate?.judulDokumen || 'Template_Dokumen_Bawaslu');
+    } else {
+      window.print();
+    }
+  };
 
   // Kop Surat Settings Modal state
   const [isKopModalOpen, setIsKopModalOpen] = useState(false);
   const [kopConfig, setKopConfig] = useState<KopSuratConfig>(getKopSuratConfig());
 
-  // Tanda Tangan & Cap Modal state
-  const [isTtdModalOpen, setIsTtdModalOpen] = useState(false);
+  // Tanda Tangan & Cap config
   const [ttdCapConfig, setTtdCapConfig] = useState<TandaTanganCapConfig>(getTandaTanganCapConfig());
+
+  const showToast = (message: string, type: 'success' | 'info' | 'error' = 'success') => {
+    setFeedbackToast({ message, type });
+    setTimeout(() => {
+      setFeedbackToast(null);
+    }, 4000);
+  };
 
   const loadTemplates = async () => {
     const list = await getTemplatesList();
@@ -126,7 +152,9 @@ export const TemplateDokumenView: React.FC<TemplateDokumenViewProps> = ({
     setFormKategori('surat_pengantar');
     setFormFormatNomor('045.2/KP.04.00/JB-22/{BULAN}/{TAHUN}');
     setFormJudulDokumen('SURAT DINAS RESMI');
-    setFormIsiKonten(`Dengan ini disampaikan kelengkapan berkas usulan Kenaikan Gaji Berkala (KGB) untuk pegawai:\n\nNama: {NAMA_PEGAWAI}\nNIP: {NIP}\nJabatan: {JABATAN}\nUnit Kerja: {UNIT_KERJA}\n\nDemikian surat ini dibuat untuk dapat dipergunakan sebagaimana mestinya.`);
+    setFormIsiKonten(
+      `Dengan ini disampaikan kelengkapan berkas usulan Kenaikan Gaji Berkala (KGB) untuk pegawai:\n\nNama: {NAMA_PEGAWAI}\nNIP: {NIP}\nJabatan: {JABATAN}\nUnit Kerja: {UNIT_KERJA}\n\nDemikian surat ini dibuat untuk dapat dipergunakan sebagaimana mestinya.`
+    );
     setFormPejabatNama('H. TATANG KOSWARA, S.Sos., M.Si');
     setFormPejabatJabatan('Kepala Sekretariat Bawaslu Kabupaten Subang');
     setFormPejabatNip('197405121998031002');
@@ -160,19 +188,42 @@ export const TemplateDokumenView: React.FC<TemplateDokumenViewProps> = ({
     };
     await saveTemplate(duplicated);
     await loadTemplates();
+    showToast(`Template disalin sebagai "${duplicated.nama}"`);
   };
 
-  const handleDelete = async (id: string, nama: string) => {
-    if (confirm(`Yakin ingin menghapus template "${nama}"?`)) {
-      await deleteTemplate(id);
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return;
+
+    setIsDeleting(true);
+    try {
+      await deleteTemplate(deleteTarget.id);
       await loadTemplates();
+      showToast(`Template "${deleteTarget.nama}" berhasil dihapus.`);
+
+      // If we are also editing this template, close editor
+      if (editingTemplate && editingTemplate.id === deleteTarget.id) {
+        setIsEditorOpen(false);
+        setEditingTemplate(null);
+      }
+
+      // If previewing this template, close preview
+      if (previewTemplate && previewTemplate.id === deleteTarget.id) {
+        setPreviewTemplate(null);
+      }
+    } catch (err) {
+      console.error('Error deleting template:', err);
+      alert('Gagal menghapus template.');
+    } finally {
+      setIsDeleting(false);
+      setDeleteTarget(null);
     }
   };
 
   const handleResetDefaults = async () => {
-    if (confirm('Yakin ingin mereset daftar template ke template standar bawaan Bawaslu Subang?')) {
+    if (confirm('Yakin ingin mereset daftar template ke template standar bawaan Bawaslu Subang? Semua template bawaan yang dihapus akan dipulihkan.')) {
       await resetTemplatesToDefault();
       await loadTemplates();
+      showToast('Daftar template berhasil dikembalikan ke standar Bawaslu Subang.');
     }
   };
 
@@ -206,6 +257,7 @@ export const TemplateDokumenView: React.FC<TemplateDokumenViewProps> = ({
     await saveTemplate(payload);
     await loadTemplates();
     setIsEditorOpen(false);
+    showToast(`Template "${payload.nama}" berhasil disimpan.`);
   };
 
   const insertVariableTag = (tag: string) => {
@@ -279,6 +331,14 @@ export const TemplateDokumenView: React.FC<TemplateDokumenViewProps> = ({
 
   return (
     <div className="space-y-6">
+      {/* Toast Notification */}
+      {feedbackToast && (
+        <div className="fixed top-5 right-5 z-50 flex items-center gap-2 rounded-xl bg-slate-900 text-white px-4 py-3 shadow-xl border border-slate-700 animate-in fade-in slide-in-from-top-3 text-xs">
+          <Check className="h-4 w-4 text-emerald-400 shrink-0" />
+          <span>{feedbackToast.message}</span>
+        </div>
+      )}
+
       {/* Top Header */}
       <div className="rounded-xl border border-slate-200 bg-white p-5 sm:p-6 shadow-2xs">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -296,7 +356,7 @@ export const TemplateDokumenView: React.FC<TemplateDokumenViewProps> = ({
                 </span>
               </div>
               <p className="text-xs text-slate-500 mt-0.5">
-                Konfigurasi format naskah dinas, surat pengantar ke Bawaslu Provinsi, petikan SK KGB, dan lembar telaah verifikasi.
+                Konfigurasi format naskah dinas resmi output sistem: Surat Pengantar dan Tanda Terima digital.
               </p>
             </div>
           </div>
@@ -312,15 +372,6 @@ export const TemplateDokumenView: React.FC<TemplateDokumenViewProps> = ({
             </button>
 
             <button
-              onClick={() => setIsTtdModalOpen(true)}
-              className="flex items-center gap-1.5 rounded-lg border border-purple-200 bg-purple-50 px-3 py-2 text-xs font-semibold text-purple-800 hover:bg-purple-100 transition"
-              title="Atur Tanda Tangan Digital & Cap Stempel Dinas Resmi"
-            >
-              <Stamp className="h-3.5 w-3.5 text-purple-700" />
-              <span>Atur TTD &amp; Cap</span>
-            </button>
-
-            <button
               onClick={handleResetDefaults}
               className="flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition"
               title="Reset ke template standar bawaan Bawaslu Subang"
@@ -329,6 +380,7 @@ export const TemplateDokumenView: React.FC<TemplateDokumenViewProps> = ({
               <span>Reset Standar</span>
             </button>
 
+            {/* Buat Template Baru Button */}
             <button
               onClick={handleOpenCreate}
               className="flex items-center gap-1.5 rounded-lg bg-slate-900 px-4 py-2 text-xs font-bold text-white hover:bg-slate-800 transition shadow"
@@ -345,7 +397,7 @@ export const TemplateDokumenView: React.FC<TemplateDokumenViewProps> = ({
           <div className="text-[11px] leading-relaxed">
             <span className="font-bold text-sky-900">Mendukung Tag Variabel Dinamis Otomatis:</span>
             <p className="text-sky-800 mt-0.5">
-              Gunakan tanda kurung kurawal seperti <code className="bg-white px-1.5 py-0.5 rounded border border-sky-300 font-mono text-[10px]">&#123;NAMA_PEGAWAI&#125;</code>, <code className="bg-white px-1.5 py-0.5 rounded border border-sky-300 font-mono text-[10px]">&#123;NIP&#125;</code>, <code className="bg-white px-1.5 py-0.5 rounded border border-sky-300 font-mono text-[10px]">&#123;TMT_KGB_BARU&#125;</code>, dan <code className="bg-white px-1.5 py-0.5 rounded border border-sky-300 font-mono text-[10px]">&#123;GAJI_POKOK_BARU&#125;</code> di dalam isi dokumen. Sistem akan mengisinya secara otomatis saat dokumen dicetak.
+              Gunakan tanda kurung kurawal seperti <code className="bg-white px-1.5 py-0.5 rounded border border-sky-300 font-mono text-[10px]">&#123;NAMA_PEGAWAI&#125;</code>, <code className="bg-white px-1.5 py-0.5 rounded border border-sky-300 font-mono text-[10px]">&#123;NIP&#125;</code>, <code className="bg-white px-1.5 py-0.5 rounded border border-sky-300 font-mono text-[10px]">&#123;TMT_KGB_BARU&#125;</code>, dan <code className="bg-white px-1.5 py-0.5 rounded border border-sky-300 font-mono text-[10px]">&#123;GAJI_POKOK_BARU&#125;</code> di dalam isi naskah. Sistem akan mengisinya secara otomatis saat dokumen dicetak.
             </p>
           </div>
         </div>
@@ -371,13 +423,9 @@ export const TemplateDokumenView: React.FC<TemplateDokumenViewProps> = ({
             onChange={(e) => setKategoriFilter(e.target.value)}
             className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 focus:border-slate-900 focus:outline-none shadow-2xs"
           >
-            <option value="ALL">Semua Kategori Template</option>
+            <option value="ALL">Semua Kategori (Surat Pengantar &amp; Tanda Terima)</option>
             <option value="surat_pengantar">Surat Pengantar</option>
-            <option value="sk_kgb">SK / Pemberitahuan KGB</option>
-            <option value="disposisi">Lembar Disposisi</option>
             <option value="tanda_terima">Tanda Terima</option>
-            <option value="surat_keterangan">Surat Keterangan</option>
-            <option value="lainnya">Lainnya</option>
           </select>
         </div>
       </div>
@@ -389,8 +437,17 @@ export const TemplateDokumenView: React.FC<TemplateDokumenViewProps> = ({
             <FileText className="mx-auto h-8 w-8 text-slate-400 mb-2" />
             <p className="font-semibold text-slate-700">Tidak ada template dokumen yang sesuai dengan pencarian.</p>
             <p className="text-[11px] text-slate-400 mt-1">
-              Silakan buat template baru atau pilih kategori yang berbeda.
+              Silakan buat template baru, impor berkas Word (.docx), atau tekan Reset Standar.
             </p>
+            <div className="mt-4 flex items-center justify-center gap-2">
+              <button
+                onClick={handleResetDefaults}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+              >
+                <RotateCcw className="h-4 w-4" />
+                <span>Pulihkan Template Bawaan</span>
+              </button>
+            </div>
           </div>
         ) : (
           filteredTemplates.map((item) => {
@@ -398,18 +455,22 @@ export const TemplateDokumenView: React.FC<TemplateDokumenViewProps> = ({
             return (
               <div
                 key={item.id}
-                className="rounded-xl border border-slate-200 bg-white p-5 shadow-2xs hover:shadow-xs transition flex flex-col justify-between"
+                className="rounded-xl border border-slate-200 bg-white p-5 shadow-2xs hover:shadow-xs transition flex flex-col justify-between group"
               >
                 <div>
                   <div className="flex items-start justify-between gap-2 mb-2">
-                    <span className={`inline-flex items-center rounded px-2.5 py-0.5 text-[10px] font-bold border ${kategoriInfo.color}`}>
+                    <span
+                      className={`inline-flex items-center rounded px-2.5 py-0.5 text-[10px] font-bold border ${kategoriInfo.color}`}
+                    >
                       {kategoriInfo.label}
                     </span>
-                    {item.isDefault && (
-                      <span className="rounded bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600">
-                        Default Bawaslu
-                      </span>
-                    )}
+                    <div className="flex items-center gap-1.5">
+                      {item.isDefault && (
+                        <span className="rounded bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600">
+                          Default Bawaslu
+                        </span>
+                      )}
+                    </div>
                   </div>
 
                   <h3 className="text-sm font-bold text-slate-900 leading-snug">
@@ -463,15 +524,14 @@ export const TemplateDokumenView: React.FC<TemplateDokumenViewProps> = ({
                     >
                       <Edit2 className="h-4 w-4" />
                     </button>
-                    {!item.isDefault && (
-                      <button
-                        onClick={() => handleDelete(item.id, item.nama)}
-                        className="rounded-lg p-1.5 text-red-500 hover:bg-red-50 hover:text-red-700 transition"
-                        title="Hapus Template"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    )}
+                    {/* HAPUS TEMPLATE - Tersedia untuk SEMUA template (Default maupun Kustom) */}
+                    <button
+                      onClick={() => setDeleteTarget(item)}
+                      className="rounded-lg p-1.5 text-red-500 hover:bg-red-50 hover:text-red-700 transition"
+                      title="Hapus Template Dokumen Ini"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
                   </div>
                 </div>
               </div>
@@ -490,19 +550,22 @@ export const TemplateDokumenView: React.FC<TemplateDokumenViewProps> = ({
                 <FileCode className="h-5 w-5 text-slate-700" />
                 <div>
                   <h3 className="text-sm font-bold text-slate-900">
-                    {editingTemplate ? 'Ubah Template Dokumen' : 'Buat Template Dokumen Baru'}
+                    {editingTemplate ? `Ubah Template Dokumen: ${editingTemplate.nama}` : 'Buat Template Dokumen Baru'}
                   </h3>
                   <p className="text-[11px] text-slate-500">
-                    Sesuaikan judul, isi naskah, format penomoran, dan pejabat penandatangan.
+                    Sesuaikan judul, isi naskah, format penomoran, dan data penandatangan resmi.
                   </p>
                 </div>
               </div>
-              <button
-                onClick={() => setIsEditorOpen(false)}
-                className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-200 hover:text-slate-600"
-              >
-                <X className="h-5 w-5" />
-              </button>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setIsEditorOpen(false)}
+                  className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-200 hover:text-slate-600"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
             </div>
 
             {/* Form */}
@@ -533,12 +596,8 @@ export const TemplateDokumenView: React.FC<TemplateDokumenViewProps> = ({
                     onChange={(e) => setFormKategori(e.target.value as TemplateKategori)}
                     className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-900 focus:border-slate-900 focus:outline-none"
                   >
-                    <option value="surat_pengantar">Surat Pengantar (ke Provinsi / Instansi)</option>
-                    <option value="sk_kgb">SK / Surat Pemberitahuan KGB</option>
-                    <option value="disposisi">Lembar Telaah Verifikasi / Disposisi</option>
-                    <option value="tanda_terima">Tanda Terima Pengajuan Berkas</option>
-                    <option value="surat_keterangan">Surat Keterangan Kinerja</option>
-                    <option value="lainnya">Lainnya</option>
+                    <option value="surat_pengantar">Surat Pengantar (ke Bawaslu Provinsi / Instansi)</option>
+                    <option value="tanda_terima">Bukti Tanda Terima Pengajuan Berkas</option>
                   </select>
                 </div>
 
@@ -589,11 +648,14 @@ export const TemplateDokumenView: React.FC<TemplateDokumenViewProps> = ({
 
               {/* Dynamic Variables Selector Panel */}
               <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                <div className="flex items-center gap-1.5 mb-2">
-                  <Tag className="h-3.5 w-3.5 text-indigo-600" />
-                  <span className="font-bold text-slate-900">
-                    Klik Tag untuk Menyisipkan Variabel Otomatis ke Isi Surat:
-                  </span>
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-1.5">
+                    <Tag className="h-3.5 w-3.5 text-indigo-600" />
+                    <span className="font-bold text-slate-900">
+                      Klik Tag untuk Menyisipkan Variabel Otomatis ke Isi Surat:
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-slate-500">Nilai terisi otomatis saat dicetak</span>
                 </div>
                 <div className="flex flex-wrap gap-1.5">
                   {VARIABLE_TAGS.map((item) => (
@@ -613,15 +675,17 @@ export const TemplateDokumenView: React.FC<TemplateDokumenViewProps> = ({
 
               {/* Textarea Isi Konten */}
               <div>
-                <label className="block font-semibold text-slate-800 mb-1">
-                  Isi Konten Naskah Dokumen *
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="font-semibold text-slate-800">
+                    Isi Konten Naskah Dokumen *
+                  </label>
+                </div>
                 <textarea
                   rows={10}
                   required
                   value={formIsiKonten}
                   onChange={(e) => setFormIsiKonten(e.target.value)}
-                  placeholder="Tuliskan naskah surat di sini. Gunakan tag variabel untuk data dinamis..."
+                  placeholder="Tuliskan naskah surat di sini. Gunakan tag variabel untuk data dinamis seperti {NAMA_PEGAWAI}, {NIP}, dll."
                   className="w-full rounded-lg border border-slate-200 p-3 font-mono text-xs text-slate-900 focus:border-slate-900 focus:outline-none leading-relaxed"
                 />
               </div>
@@ -687,24 +751,99 @@ export const TemplateDokumenView: React.FC<TemplateDokumenViewProps> = ({
                 />
               </div>
 
-              {/* Actions */}
-              <div className="flex items-center justify-end gap-2 pt-3 border-t">
-                <button
-                  type="button"
-                  onClick={() => setIsEditorOpen(false)}
-                  className="rounded-lg border border-slate-300 px-4 py-2 font-semibold text-slate-700 hover:bg-slate-50 transition"
-                >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  className="flex items-center gap-1.5 rounded-lg bg-slate-900 px-5 py-2 font-bold text-white hover:bg-slate-800 transition shadow"
-                >
-                  <Check className="h-4 w-4 text-emerald-400" />
-                  <span>Simpan Template</span>
-                </button>
+              {/* Actions Footer */}
+              <div className="flex items-center justify-between gap-2 pt-3 border-t">
+                {/* Delete button inside editor if modifying an existing template */}
+                <div>
+                  {editingTemplate && (
+                    <button
+                      type="button"
+                      onClick={() => setDeleteTarget(editingTemplate)}
+                      className="flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3.5 py-2 font-semibold text-red-700 hover:bg-red-100 transition"
+                      title="Hapus template ini secara permanen"
+                    >
+                      <Trash2 className="h-4 w-4 text-red-600" />
+                      <span>Hapus Template Ini</span>
+                    </button>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsEditorOpen(false)}
+                    className="rounded-lg border border-slate-300 px-4 py-2 font-semibold text-slate-700 hover:bg-slate-50 transition"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="submit"
+                    className="flex items-center gap-1.5 rounded-lg bg-slate-900 px-5 py-2 font-bold text-white hover:bg-slate-800 transition shadow"
+                  >
+                    <Check className="h-4 w-4 text-emerald-400" />
+                    <span>Simpan Template</span>
+                  </button>
+                </div>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ================= MODAL KONFIRMASI HAPUS TEMPLATE ================= */}
+      {deleteTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs">
+          <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl text-xs space-y-4 animate-in fade-in zoom-in-95">
+            <div className="flex items-start gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-red-100 text-red-600">
+                <AlertTriangle className="h-5 w-5" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-sm font-bold text-slate-900">
+                  Hapus Template Dokumen?
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Apakah Anda yakin ingin menghapus template berikut dari sistem?
+                </p>
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3.5 space-y-1.5">
+              <div className="font-bold text-slate-900 text-xs">{deleteTarget.nama}</div>
+              <div className="flex items-center gap-2">
+                <span className="rounded bg-slate-200 px-2 py-0.5 text-[10px] font-semibold text-slate-700">
+                  {KATEGORI_LABELS[deleteTarget.kategori]?.label || deleteTarget.kategori}
+                </span>
+                <span className="font-mono text-[10px] text-slate-500">
+                  {deleteTarget.formatNomor}
+                </span>
+              </div>
+              {deleteTarget.isDefault && (
+                <div className="mt-2 rounded-lg bg-amber-50 border border-amber-200 p-2 text-[11px] text-amber-800">
+                  <b>Catatan:</b> Ini adalah salah satu template bawaan standar. Jika dihapus, Anda tetap dapat memulihkannya kapan saja menggunakan tombol <b>Reset Standar</b> di toolbar atas.
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={() => setDeleteTarget(null)}
+                className="rounded-lg border border-slate-300 px-4 py-2 font-semibold text-slate-700 hover:bg-slate-50 transition"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={handleConfirmDelete}
+                className="flex items-center gap-1.5 rounded-lg bg-red-600 px-4 py-2 font-bold text-white hover:bg-red-700 transition shadow disabled:opacity-50"
+              >
+                <Trash2 className="h-4 w-4" />
+                <span>{isDeleting ? 'Menghapus...' : 'Ya, Hapus Template'}</span>
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -749,20 +888,12 @@ export const TemplateDokumenView: React.FC<TemplateDokumenViewProps> = ({
                 </button>
 
                 <button
-                  onClick={() => setIsTtdModalOpen(true)}
-                  className="flex items-center gap-1.5 rounded-lg border border-purple-200 bg-purple-50 px-3 py-1.5 text-xs font-semibold text-purple-800 hover:bg-purple-100 transition"
-                  title="Ubah Tanda Tangan Digital & Cap Stempel Dinas"
-                >
-                  <Stamp className="h-3.5 w-3.5 text-purple-700" />
-                  <span>Ubah TTD &amp; Cap</span>
-                </button>
-
-                <button
-                  onClick={() => window.print()}
-                  className="flex items-center gap-1.5 rounded-lg bg-slate-900 px-3.5 py-1.5 text-xs font-bold text-white hover:bg-slate-800 transition shadow"
+                  onClick={handlePrintPreview}
+                  className="flex items-center gap-1.5 rounded-lg bg-slate-900 px-3.5 py-1.5 text-xs font-bold text-white hover:bg-slate-800 transition shadow-xs"
+                  title="Cetak langsung menggunakan printer atau dialog cetak browser"
                 >
                   <Printer className="h-3.5 w-3.5" />
-                  <span>Cetak / Simpan PDF</span>
+                  <span>Cetak</span>
                 </button>
 
                 <button
@@ -776,7 +907,10 @@ export const TemplateDokumenView: React.FC<TemplateDokumenViewProps> = ({
 
             {/* Printable Sheet Area */}
             <div className="flex-1 overflow-y-auto p-6 sm:p-10 bg-slate-100">
-              <div className="mx-auto max-w-[210mm] bg-white p-8 sm:p-12 shadow border border-slate-200 text-slate-900 text-sm leading-relaxed print:p-0 print:border-none print:shadow-none">
+              <div
+                ref={previewSheetRef}
+                className="mx-auto max-w-[210mm] bg-white p-8 sm:p-12 shadow border border-slate-200 text-slate-900 text-sm leading-relaxed print:p-0 print:border-none print:shadow-none"
+              >
                 {/* KOP SURAT RESMI DINAMIS */}
                 <KopSuratHeader config={kopConfig} />
 
@@ -808,6 +942,7 @@ export const TemplateDokumenView: React.FC<TemplateDokumenViewProps> = ({
                           customJabatan={previewTemplate.penandatanganJabatan}
                           customNip={previewTemplate.penandatanganNip}
                           align="right"
+                          mode="pimpinan_saja"
                         />
                       </div>
 
@@ -836,14 +971,9 @@ export const TemplateDokumenView: React.FC<TemplateDokumenViewProps> = ({
         isOpen={isKopModalOpen}
         onClose={() => setIsKopModalOpen(false)}
         onSaved={(newCfg) => setKopConfig(newCfg)}
+        isAdmin={true}
       />
 
-      {/* TANDA TANGAN & CAP CONFIGURATION MODAL */}
-      <TandaTanganCapModal
-        isOpen={isTtdModalOpen}
-        onClose={() => setIsTtdModalOpen(false)}
-        onSaved={(newCfg) => setTtdCapConfig(newCfg)}
-      />
     </div>
   );
 };

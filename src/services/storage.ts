@@ -20,6 +20,7 @@ import {
 import {
   DEFAULT_CAP_BAWASLU_SVG,
   DEFAULT_TANDA_TANGAN_SVG,
+  DEFAULT_TANDA_TANGAN_KASUBAG_SVG,
 } from '../data/defaultSignatureAssets';
 import { getSupabaseClient } from './supabase';
 import { saveDocumentBinary, getDocumentBinary } from './idbStorage';
@@ -204,34 +205,61 @@ export async function getPengajuanList(): Promise<PengajuanKGB[]> {
         .order('tanggal_pengajuan', { ascending: false });
 
       if (!error && data && data.length > 0) {
-        return data.map((d: any) => ({
-          id: d.id,
-          noPengajuan: d.no_pengajuan || d.noPengajuan,
-          pegawaiId: d.pegawai_id || d.pegawaiId,
-          namaPemohon: d.nama_pemohon || d.namaPemohon,
-          nipPemohon: d.nip_pemohon || d.nipPemohon,
-          jabatanPemohon: d.jabatan_pemohon || d.jabatanPemohon,
-          divisiPemohon: d.divisi_pemohon || d.divisiPemohon,
-          emailPemohon: d.email_pemohon || d.emailPemohon,
-          noHpPemohon: d.no_hp_pemohon || d.noHpPemohon,
-          perihal: d.perihal,
-          periodeKgb: d.periode_kgb || d.periodeKgb,
-          tmtKgbBaru: d.tmt_kgb_baru || d.tmtKgbBaru,
-          gajiLama: d.gaji_lama ?? d.gajiLama,
-          gajiBaruEstimasi: d.gaji_baru_estimasi ?? d.gajiBaruEstimasi,
-          skPangkatTerakhir: d.sk_pangkat_terakhir || d.skPangkatTerakhir,
-          skGajiBerkalaTerakhir: d.sk_gaji_berkala_terakhir || d.skGajiBerkalaTerakhir,
-          dokumenSkpPrestasi: d.dokumen_skp_prestasi || d.dokumenSkpPrestasi,
-          dokumenPendukungLain: d.dokumen_pendukung_lain || d.dokumenPendukungLain,
-          catatanPemohon: d.catatan_pemohon || d.catatanPemohon,
-          status: d.status as PengajuanStatus,
-          catatanVerifikator: d.catatan_verifikator || d.catatanVerifikator,
-          diverifikasiOleh: d.diverifikasi_oleh || d.diverifikasiOleh,
-          tanggalPengajuan: d.tanggal_pengajuan || d.tanggalPengajuan,
-          tanggalVerifikasi: d.tanggal_verifikasi || d.tanggalVerifikasi,
-          nomorSkKgbDiterbitkan: d.nomor_sk_kgb_diterbitkan || d.nomorSkKgbDiterbitkan,
-          tanggalSkDiterbitkan: d.tanggal_sk_diterbitkan || d.tanggalSkDiterbitkan,
-        }));
+        return data.map((d: any) => {
+          let resolvedStatus = (d.status || 'menunggu_verifikasi') as PengajuanStatus;
+
+          // Check if fallback sub_status is preserved in dokumen_pendukung_lain
+          if (
+            (resolvedStatus === 'dalam_proses' || resolvedStatus === 'menunggu_verifikasi') &&
+            d.dokumen_pendukung_lain &&
+            (d.dokumen_pendukung_lain._sub_status === 'dikirim_ke_provinsi' ||
+              d.dokumen_pendukung_lain._actualStatus === 'dikirim_ke_provinsi')
+          ) {
+            resolvedStatus = 'dikirim_ke_provinsi';
+          }
+
+          let cleanDokumenPendukung = d.dokumen_pendukung_lain || d.dokumenPendukungLain;
+          if (cleanDokumenPendukung) {
+            if (
+              !cleanDokumenPendukung.id &&
+              (cleanDokumenPendukung._sub_status || cleanDokumenPendukung._actualStatus)
+            ) {
+              cleanDokumenPendukung = undefined;
+            } else if (cleanDokumenPendukung._sub_status || cleanDokumenPendukung._actualStatus) {
+              const { _sub_status, _actualStatus, ...restDoc } = cleanDokumenPendukung;
+              cleanDokumenPendukung = restDoc;
+            }
+          }
+
+          return {
+            id: d.id,
+            noPengajuan: d.no_pengajuan || d.noPengajuan,
+            pegawaiId: d.pegawai_id || d.pegawaiId,
+            namaPemohon: d.nama_pemohon || d.namaPemohon,
+            nipPemohon: d.nip_pemohon || d.nipPemohon,
+            jabatanPemohon: d.jabatan_pemohon || d.jabatanPemohon,
+            divisiPemohon: d.divisi_pemohon || d.divisiPemohon,
+            emailPemohon: d.email_pemohon || d.emailPemohon,
+            noHpPemohon: d.no_hp_pemohon || d.noHpPemohon,
+            perihal: d.perihal,
+            periodeKgb: d.periode_kgb || d.periodeKgb,
+            tmtKgbBaru: d.tmt_kgb_baru || d.tmtKgbBaru,
+            gajiLama: d.gaji_lama ?? d.gajiLama,
+            gajiBaruEstimasi: d.gaji_baru_estimasi ?? d.gajiBaruEstimasi,
+            skPangkatTerakhir: d.sk_pangkat_terakhir || d.skPangkatTerakhir,
+            skGajiBerkalaTerakhir: d.sk_gaji_berkala_terakhir || d.skGajiBerkalaTerakhir,
+            dokumenSkpPrestasi: d.dokumen_skp_prestasi || d.dokumenSkpPrestasi,
+            dokumenPendukungLain: cleanDokumenPendukung,
+            catatanPemohon: d.catatan_pemohon || d.catatanPemohon,
+            status: resolvedStatus,
+            catatanVerifikator: d.catatan_verifikator || d.catatanVerifikator,
+            diverifikasiOleh: d.diverifikasi_oleh || d.diverifikasiOleh,
+            tanggalPengajuan: d.tanggal_pengajuan || d.tanggalPengajuan,
+            tanggalVerifikasi: d.tanggal_verifikasi || d.tanggalVerifikasi,
+            nomorSkKgbDiterbitkan: d.nomor_sk_kgb_diterbitkan || d.nomorSkKgbDiterbitkan,
+            tanggalSkDiterbitkan: d.tanggal_sk_diterbitkan || d.tanggalSkDiterbitkan,
+          };
+        });
       }
     } catch (e) {
       console.warn('Supabase fetch pengajuan error, using local:', e);
@@ -262,11 +290,28 @@ export async function savePengajuan(item: PengajuanKGB): Promise<PengajuanKGB> {
     console.warn('Could not save binary to IndexedDB:', e);
   }
 
-  // 2. Supabase Cloud Sync (non-blocking)
+  // 2. Safe local storage persistence immediately (prevents UI race conditions)
+  try {
+    const raw = localStorage.getItem(KEYS.PENGAJUAN);
+    const localList: PengajuanKGB[] = raw ? JSON.parse(raw) : INITIAL_PENGAJUAN;
+    const index = localList.findIndex((p) => p.id === item.id);
+    let updated: PengajuanKGB[];
+    if (index >= 0) {
+      updated = [...localList];
+      updated[index] = item;
+    } else {
+      updated = [item, ...localList];
+    }
+    safeLocalStorageSet(KEYS.PENGAJUAN, updated);
+  } catch (e) {
+    console.warn('Safe localStorage set pengajuan error:', e);
+  }
+
+  // 3. Supabase Cloud Sync
   const supabase = getSupabaseClient();
   if (supabase) {
     try {
-      const dbPayload = {
+      const dbPayload: any = {
         id: item.id,
         no_pengajuan: item.noPengajuan,
         pegawai_id: item.pegawaiId,
@@ -279,40 +324,94 @@ export async function savePengajuan(item: PengajuanKGB): Promise<PengajuanKGB> {
         perihal: item.perihal,
         periode_kgb: item.periodeKgb,
         tmt_kgb_baru: item.tmtKgbBaru,
-        gaji_lama: item.gajiLama,
-        gaji_baru_estimasi: item.gajiBaruEstimasi,
+        gaji_lama: item.gajiLama ?? null,
+        gaji_baru_estimasi: item.gajiBaruEstimasi ?? null,
         // Trim fileData for supabase payload
-        sk_pangkat_terakhir: item.skPangkatTerakhir ? { ...item.skPangkatTerakhir, fileData: undefined } : undefined,
-        sk_gaji_berkala_terakhir: item.skGajiBerkalaTerakhir ? { ...item.skGajiBerkalaTerakhir, fileData: undefined } : undefined,
-        dokumen_skp_prestasi: item.dokumenSkpPrestasi ? { ...item.dokumenSkpPrestasi, fileData: undefined } : undefined,
-        dokumen_pendukung_lain: item.dokumenPendukungLain,
-        catatan_pemohon: item.catatanPemohon,
+        sk_pangkat_terakhir: item.skPangkatTerakhir
+          ? { ...item.skPangkatTerakhir, fileData: undefined }
+          : null,
+        sk_gaji_berkala_terakhir: item.skGajiBerkalaTerakhir
+          ? { ...item.skGajiBerkalaTerakhir, fileData: undefined }
+          : null,
+        dokumen_skp_prestasi: item.dokumenSkpPrestasi
+          ? { ...item.dokumenSkpPrestasi, fileData: undefined }
+          : null,
+        dokumen_pendukung_lain: item.dokumenPendukungLain
+          ? { ...item.dokumenPendukungLain, fileData: undefined }
+          : null,
+        catatan_pemohon: item.catatanPemohon ?? null,
         status: item.status,
-        catatan_verifikator: item.catatanVerifikator,
-        diverifikasi_oleh: item.diverifikasiOleh,
+        catatan_verifikator: item.catatanVerifikator ?? null,
+        diverifikasi_oleh: item.diverifikasiOleh ?? null,
         tanggal_pengajuan: item.tanggalPengajuan,
-        tanggal_verifikasi: item.tanggalVerifikasi,
-        nomor_sk_kgb_diterbitkan: item.nomorSkKgbDiterbitkan,
-        tanggal_sk_diterbitkan: item.tanggalSkDiterbitkan,
+        tanggal_verifikasi: item.tanggalVerifikasi ?? null,
+        nomor_sk_kgb_diterbitkan: item.nomorSkKgbDiterbitkan ?? null,
+        tanggal_sk_diterbitkan: item.tanggalSkDiterbitkan ?? null,
       };
-      await supabase.from('pengajuan_kgb').upsert(dbPayload);
+
+      const { error } = await supabase.from('pengajuan_kgb').upsert(dbPayload);
+      if (error) {
+        console.warn('Supabase save pengajuan first attempt warning:', error);
+        // If Postgres rejected because check constraint pengajuan_kgb_status_check doesn't have dikirim_ke_provinsi yet
+        if (
+          error.code === '23514' ||
+          error.message?.includes('status_check') ||
+          error.message?.includes('violates check constraint')
+        ) {
+          console.info('Handling status check constraint fallback for Supabase table...');
+          const fallbackPayload = {
+            ...dbPayload,
+            status: 'dalam_proses',
+            dokumen_pendukung_lain: {
+              ...(item.dokumenPendukungLain
+                ? { ...item.dokumenPendukungLain, fileData: undefined }
+                : {}),
+              _sub_status: item.status,
+            },
+          };
+          const { error: fallbackError } = await supabase
+            .from('pengajuan_kgb')
+            .upsert(fallbackPayload);
+          if (fallbackError) {
+            console.error('Supabase fallback save failed:', fallbackError);
+          } else {
+            console.info('Supabase fallback saved successfully with _sub_status:', item.status);
+          }
+        }
+      }
     } catch (e) {
       console.warn('Supabase save pengajuan error:', e);
     }
   }
 
-  // 3. Safe local storage persistence
-  const current = await getPengajuanList();
-  const index = current.findIndex((p) => p.id === item.id);
-  let updated: PengajuanKGB[];
-  if (index >= 0) {
-    updated = [...current];
-    updated[index] = item;
-  } else {
-    updated = [item, ...current];
-  }
-  safeLocalStorageSet(KEYS.PENGAJUAN, updated);
   return item;
+}
+
+export async function deletePengajuan(id: string): Promise<boolean> {
+  // 1. Delete from localStorage
+  try {
+    const raw = localStorage.getItem(KEYS.PENGAJUAN);
+    const localList: PengajuanKGB[] = raw ? JSON.parse(raw) : INITIAL_PENGAJUAN;
+    const updated = localList.filter((p) => p.id !== id);
+    safeLocalStorageSet(KEYS.PENGAJUAN, updated);
+  } catch (e) {
+    console.warn('Safe localStorage delete pengajuan error:', e);
+  }
+
+  // 2. Delete from Supabase Cloud if connected
+  const supabase = getSupabaseClient();
+  if (supabase) {
+    try {
+      const { error } = await supabase.from('pengajuan_kgb').delete().eq('id', id);
+      if (error) {
+        console.warn('Supabase delete pengajuan error:', error);
+      }
+    } catch (err) {
+      console.warn('Supabase delete pengajuan exception:', err);
+    }
+  }
+
+  return true;
 }
 
 // ======================== USERS REPOSITORY ========================
@@ -556,7 +655,12 @@ export async function addEmailLog(log: EmailDispatchLog): Promise<void> {
 export async function getTemplatesList(): Promise<TemplateDokumen[]> {
   try {
     const raw = localStorage.getItem(KEYS.TEMPLATES);
-    return raw ? JSON.parse(raw) : INITIAL_TEMPLATES;
+    if (!raw) return INITIAL_TEMPLATES;
+    const parsed: TemplateDokumen[] = JSON.parse(raw);
+    const filtered = parsed.filter(
+      (t) => t.kategori === 'surat_pengantar' || t.kategori === 'tanda_terima'
+    );
+    return filtered.length > 0 ? filtered : INITIAL_TEMPLATES;
   } catch (e) {
     return INITIAL_TEMPLATES;
   }
@@ -607,6 +711,20 @@ export const DEFAULT_KOP_SURAT: KopSuratConfig = {
   garisKopGaya: 'ganda',
 };
 
+export function getCurrentSessionUser(): User | null {
+  try {
+    const raw = localStorage.getItem('sikgb_session_user');
+    return raw ? JSON.parse(raw) : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+export function isCurrentUserAdmin(): boolean {
+  const user = getCurrentSessionUser();
+  return user?.role === 'admin';
+}
+
 export function getKopSuratConfig(): KopSuratConfig {
   try {
     const raw = localStorage.getItem(KEYS.KOP_SURAT);
@@ -618,7 +736,12 @@ export function getKopSuratConfig(): KopSuratConfig {
   }
 }
 
-export function saveKopSuratConfig(config: KopSuratConfig): KopSuratConfig {
+export function saveKopSuratConfig(config: KopSuratConfig, forcedIsAdmin?: boolean): KopSuratConfig {
+  const isAdmin = forcedIsAdmin !== undefined ? forcedIsAdmin : isCurrentUserAdmin();
+  if (!isAdmin) {
+    console.warn('Akses ditolak: Hanya admin yang dapat mengubah pengaturan kop surat.');
+    return getKopSuratConfig();
+  }
   const itemToSave: KopSuratConfig = {
     ...config,
     updatedAt: new Date().toISOString(),
@@ -631,7 +754,12 @@ export function saveKopSuratConfig(config: KopSuratConfig): KopSuratConfig {
   return itemToSave;
 }
 
-export function resetKopSuratConfig(): KopSuratConfig {
+export function resetKopSuratConfig(forcedIsAdmin?: boolean): KopSuratConfig {
+  const isAdmin = forcedIsAdmin !== undefined ? forcedIsAdmin : isCurrentUserAdmin();
+  if (!isAdmin) {
+    console.warn('Akses ditolak: Hanya admin yang dapat mereset kop surat.');
+    return getKopSuratConfig();
+  }
   try {
     localStorage.removeItem(KEYS.KOP_SURAT);
   } catch (e) {}
@@ -640,6 +768,7 @@ export function resetKopSuratConfig(): KopSuratConfig {
 
 // ======================== TANDA TANGAN & CAP REPOSITORY ========================
 export const DEFAULT_TTD_CAP: TandaTanganCapConfig = {
+  // 1. Tanda Tangan Pimpinan (Kepala Sekretariat)
   namaPejabat: 'H. TATANG KOSWARA, S.Sos., M.Si',
   jabatan: 'Kepala Sekretariat Bawaslu Kabupaten Subang',
   nip: '197405121998031002',
@@ -652,6 +781,19 @@ export const DEFAULT_TTD_CAP: TandaTanganCapConfig = {
   tampilkanCap: true,
   posisiCap: 'tumpang_kiri',
   opacityCap: 0.88,
+
+  // 2. Tanda Tangan Admin (Kasubag Administrasi)
+  adminKasubag: {
+    nama: 'DIMAS EBO SUHARTONO, S.AP',
+    jabatan: 'Kepala Sub Bagian Administrasi',
+    nip: '199206142019031004',
+    tandaTanganUrl: DEFAULT_TANDA_TANGAN_KASUBAG_SVG,
+    tandaTanganWidthPx: 135,
+    tampilkanTandaTangan: true,
+  },
+
+  // Format tata letak tanda tangan pada dokumen cetak (tunggal / tanpa verifikator ganda)
+  modeTampilanDokumen: 'pimpinan_saja',
 };
 
 export function getTandaTanganCapConfig(): TandaTanganCapConfig {
@@ -659,13 +801,26 @@ export function getTandaTanganCapConfig(): TandaTanganCapConfig {
     const raw = localStorage.getItem(KEYS.TANDA_TANGAN_CAP);
     if (!raw) return DEFAULT_TTD_CAP;
     const parsed = JSON.parse(raw);
-    return { ...DEFAULT_TTD_CAP, ...parsed };
+    return {
+      ...DEFAULT_TTD_CAP,
+      ...parsed,
+      adminKasubag: {
+        ...DEFAULT_TTD_CAP.adminKasubag,
+        ...(parsed.adminKasubag || {}),
+      },
+      modeTampilanDokumen: 'pimpinan_saja',
+    };
   } catch (e) {
     return DEFAULT_TTD_CAP;
   }
 }
 
-export function saveTandaTanganCapConfig(config: TandaTanganCapConfig): TandaTanganCapConfig {
+export function saveTandaTanganCapConfig(config: TandaTanganCapConfig, forcedIsAdmin?: boolean): TandaTanganCapConfig {
+  const isAdmin = forcedIsAdmin !== undefined ? forcedIsAdmin : isCurrentUserAdmin();
+  if (!isAdmin) {
+    console.warn('Akses ditolak: Hanya admin yang dapat mengubah pengaturan tanda tangan dan cap.');
+    return getTandaTanganCapConfig();
+  }
   const itemToSave: TandaTanganCapConfig = {
     ...config,
     updatedAt: new Date().toISOString(),
@@ -678,10 +833,16 @@ export function saveTandaTanganCapConfig(config: TandaTanganCapConfig): TandaTan
   return itemToSave;
 }
 
-export function resetTandaTanganCapConfig(): TandaTanganCapConfig {
+export function resetTandaTanganCapConfig(forcedIsAdmin?: boolean): TandaTanganCapConfig {
+  const isAdmin = forcedIsAdmin !== undefined ? forcedIsAdmin : isCurrentUserAdmin();
+  if (!isAdmin) {
+    console.warn('Akses ditolak: Hanya admin yang dapat mereset tanda tangan dan cap.');
+    return getTandaTanganCapConfig();
+  }
   try {
     localStorage.removeItem(KEYS.TANDA_TANGAN_CAP);
   } catch (e) {}
   return DEFAULT_TTD_CAP;
 }
+
 

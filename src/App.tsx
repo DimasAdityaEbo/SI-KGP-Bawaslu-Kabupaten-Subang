@@ -36,7 +36,6 @@ import { EmailLogModal } from './components/EmailLogModal';
 import { NotificationModal } from './components/NotificationModal';
 import { UbahPasswordModal } from './components/UbahPasswordModal';
 import { KopSuratModal } from './components/admin/KopSuratModal';
-import { TandaTanganCapModal } from './components/admin/TandaTanganCapModal';
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -59,7 +58,6 @@ export default function App() {
   const [isNotificationsModalOpen, setIsNotificationsModalOpen] = useState(false);
   const [isUbahPasswordModalOpen, setIsUbahPasswordModalOpen] = useState(false);
   const [isGlobalKopModalOpen, setIsGlobalKopModalOpen] = useState(false);
-  const [isGlobalTtdModalOpen, setIsGlobalTtdModalOpen] = useState(false);
 
   // Load Data
   const loadAllData = async () => {
@@ -98,6 +96,7 @@ export default function App() {
 
   const handleLogin = (user: User) => {
     setCurrentUser(user);
+    localStorage.setItem('sikgb_session_user', JSON.stringify(user));
     setCurrentTab('dashboard');
     setSelectedPengajuan(null);
   };
@@ -152,6 +151,13 @@ export default function App() {
   // Pending count for sidebar badge
   const pendingCount = pengajuanList.filter((p) => p.status === 'menunggu_verifikasi').length;
 
+  // Check if active pegawai has an ongoing submission (not yet approved or rejected)
+  const hasPegawaiOngoingPengajuan = linkedPegawai
+    ? pengajuanList.some(
+        (p) => p.pegawaiId === linkedPegawai.id && p.status !== 'disetujui' && p.status !== 'ditolak'
+      )
+    : false;
+
   if (!currentUser) {
     return <LoginView onLogin={handleLogin} usersList={usersList} />;
   }
@@ -186,11 +192,11 @@ export default function App() {
             setSelectedPengajuan(null);
           }}
           pendingCount={pendingCount}
-          onOpenSupabaseModal={() => setIsSupabaseModalOpen(true)}
-          onOpenEmailLogs={() => setIsEmailLogsModalOpen(true)}
+          hasOngoingPengajuan={hasPegawaiOngoingPengajuan}
+          onOpenSupabaseModal={currentUser.role === 'admin' ? () => setIsSupabaseModalOpen(true) : undefined}
+          onOpenEmailLogs={currentUser.role === 'admin' ? () => setIsEmailLogsModalOpen(true) : undefined}
           onOpenUbahPassword={() => setIsUbahPasswordModalOpen(true)}
-          onOpenKopSuratModal={() => setIsGlobalKopModalOpen(true)}
-          onOpenTtdCapModal={() => setIsGlobalTtdModalOpen(true)}
+          onOpenKopSuratModal={currentUser.role === 'admin' ? () => setIsGlobalKopModalOpen(true) : undefined}
         />
 
         {/* Main Viewport Content Area */}
@@ -272,8 +278,13 @@ export default function App() {
               {currentTab === 'ajukan' && linkedPegawai && (
                 <AjukanPermohonan
                   pegawai={linkedPegawai}
+                  pengajuanList={pengajuanList}
                   onRefreshData={loadAllData}
                   onSuccessRedirect={() => setCurrentTab('riwayat')}
+                  onViewDetailPengajuan={(item) => {
+                    setSelectedPengajuan(item);
+                    setCurrentTab('riwayat');
+                  }}
                 />
               )}
 
@@ -284,6 +295,7 @@ export default function App() {
                   onRefreshData={loadAllData}
                   selectedPengajuanFromDashboard={selectedPengajuan}
                   onClearSelectedPengajuan={() => setSelectedPengajuan(null)}
+                  onSelectTab={setCurrentTab}
                 />
               )}
 
@@ -347,14 +359,9 @@ export default function App() {
 
       {/* GLOBAL KOP SURAT CONFIGURATION MODAL */}
       <KopSuratModal
-        isOpen={isGlobalKopModalOpen}
+        isOpen={isGlobalKopModalOpen && currentUser?.role === 'admin'}
         onClose={() => setIsGlobalKopModalOpen(false)}
-      />
-
-      {/* GLOBAL TANDA TANGAN & CAP CONFIGURATION MODAL */}
-      <TandaTanganCapModal
-        isOpen={isGlobalTtdModalOpen}
-        onClose={() => setIsGlobalTtdModalOpen(false)}
+        isAdmin={currentUser?.role === 'admin'}
       />
     </div>
   );

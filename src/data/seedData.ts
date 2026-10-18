@@ -462,68 +462,8 @@ Demikian surat pengantar ini kami sampaikan. Atas perhatian dan kerja sama yang 
     createdAt: '2026-01-01T00:00:00Z',
   },
   {
-    id: 'tmpl-sk-kgb',
-    nama: 'Surat Pemberitahuan Kenaikan Gaji Berkala (SK KGB)',
-    deskripsi: 'Format resmi surat penetapan hak kenaikan gaji berkala pegawai setelah disetujui.',
-    kategori: 'sk_kgb',
-    formatNomor: '045.2/KP.04.00/JB-22/{BULAN}/{TAHUN}',
-    judulDokumen: 'SURAT PEMBERITAHUAN KENAIKAN GAJI BERKALA',
-    isiKonten: `Dengan ini diberitahukan bahwa berhubung telah dipenuhinya masa kerja dan syarat-syarat lainnya kepada:
-
-1. Nama Pegawai             : {NAMA_PEGAWAI}
-2. NIP / NIK                : {NIP}
-3. Pangkat / Golongan Ruang : {PANGKAT_GOLONGAN}
-4. Jabatan                  : {JABATAN}
-5. Unit Kerja               : {UNIT_KERJA}
-
-Diberikan Kenaikan Gaji Berkala hingga memperoleh:
-a. Gaji Pokok Baru          : Rp {GAJI_POKOK_BARU}
-b. Berdasarkan Masa Kerja   : Masa Kerja Golongan Sesuai Regulasi
-c. Mulai Terhitung Tanggal  : {TMT_KGB_BARU}
-
-Diharapkan kepada pejabat yang berwenang membayarkan penghasilan agar dapat menyesuaikan pembayaran gaji pegawai yang bersangkutan sesuai dengan peraturan perundang-undangan yang berlaku.`,
-    penandatanganNama: 'H. TATANG KOSWARA, S.Sos., M.Si',
-    penandatanganJabatan: 'Kepala Sekretariat Bawaslu Kabupaten Subang',
-    penandatanganNip: '197405121998031002',
-    tembusan: [
-      '1. Kepala Kantor Pelayanan Perbendaharaan Negara (KPPN)',
-      '2. Pejabat Pembuat Komitmen (PPK) Bawaslu Kabupaten Subang',
-      '3. Bendahara Pengeluaran Bawaslu Kabupaten Subang',
-      '4. Pegawai yang bersangkutan'
-    ],
-    isDefault: true,
-    createdAt: '2026-01-01T00:00:00Z',
-  },
-  {
-    id: 'tmpl-disposisi',
-    nama: 'Lembar Telaah Verifikasi & Disposisi Berkas',
-    deskripsi: 'Lembar telaah kelayakan berkas persyaratan KGB oleh verifikator kepegawaian dan atasan langsung.',
-    kategori: 'disposisi',
-    formatNomor: 'DISP/KP.04.00/{BULAN}/{TAHUN}',
-    judulDokumen: 'LEMBAR TELAAH VERIFIKASI & DISPOSISI BERKAS KGB',
-    isiKonten: `Telah dilakukan verifikasi berkas usulan Kenaikan Gaji Berkala terhadap pegawai:
-- Nama Pegawai : {NAMA_PEGAWAI}
-- NIP          : {NIP}
-- Jabatan      : {JABATAN}
-- Unit Kerja   : {UNIT_KERJA}
-
-Catatan Hasil Verifikasi:
-1. Masa kerja 2 tahun telah terpenuhi terhitung sejak TMT KGB terakhir.
-2. Predikat SKP (Sasaran Kinerja Pegawai) bernilai minimal BAIK.
-3. Seluruh berkas digital telah diperiksa keabsahannya.
-
-Rekomendasi Petugas Verifikator:
-Memenuhi syarat untuk diproses penerbitan Kenaikan Gaji Berkala (KGB) dan/atau diteruskan ke tingkat yang berwenang.`,
-    penandatanganNama: 'Administrator Kepegawaian Bawaslu Subang',
-    penandatanganJabatan: 'Staf Sub Bagian Administrasi & SDM',
-    penandatanganNip: '198503202012011001',
-    tembusan: ['Arsip Kepegawaian'],
-    isDefault: true,
-    createdAt: '2026-01-01T00:00:00Z',
-  },
-  {
     id: 'tmpl-tanda-terima',
-    nama: 'Tanda Terima Berkas Elektronik',
+    nama: 'Bukti Tanda Terima Berkas Elektronik',
     deskripsi: 'Bukti resmi penyerahan dan penerimaan dokumen persyaratan KGB digital.',
     kategori: 'tanda_terima',
     formatNomor: 'TND/KGB/{BULAN}/{TAHUN}',

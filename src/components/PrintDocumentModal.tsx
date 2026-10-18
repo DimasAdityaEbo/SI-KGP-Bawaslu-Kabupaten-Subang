@@ -1,19 +1,20 @@
 import React, { useRef, useState } from 'react';
-import { X, Printer, Download, CheckCircle2, Building2, Stamp } from 'lucide-react';
+import { X, Printer, Building2 } from 'lucide-react';
 import { PengajuanKGB, Pegawai, KopSuratConfig, TandaTanganCapConfig } from '../types';
-import { getKopSuratConfig, getTandaTanganCapConfig } from '../services/storage';
+import { getKopSuratConfig, getTandaTanganCapConfig, isCurrentUserAdmin } from '../services/storage';
+import { printElementDirect } from '../services/printService';
 import { BawasluLogo } from './BawasluLogo';
 import { KopSuratHeader } from './KopSuratHeader';
 import { KopSuratModal } from './admin/KopSuratModal';
 import { TandaTanganCapBlock } from './TandaTanganCapBlock';
-import { TandaTanganCapModal } from './admin/TandaTanganCapModal';
 
 interface PrintDocumentModalProps {
   isOpen: boolean;
   onClose: () => void;
   pengajuan: PengajuanKGB;
   pegawai?: Pegawai;
-  mode: 'disposisi' | 'sk_kgb' | 'tanda_terima';
+  mode: 'surat_pengantar' | 'tanda_terima' | 'disposisi' | 'sk_kgb';
+  isAdmin?: boolean;
 }
 
 export const PrintDocumentModal: React.FC<PrintDocumentModalProps> = ({
@@ -22,16 +23,28 @@ export const PrintDocumentModal: React.FC<PrintDocumentModalProps> = ({
   pengajuan,
   pegawai,
   mode,
+  isAdmin,
 }) => {
+  const effectiveIsAdmin = isAdmin !== undefined ? isAdmin : isCurrentUserAdmin();
   const [kopConfig, setKopConfig] = useState<KopSuratConfig>(getKopSuratConfig());
   const [isKopModalOpen, setIsKopModalOpen] = useState(false);
   const [ttdCapConfig, setTtdCapConfig] = useState<TandaTanganCapConfig>(getTandaTanganCapConfig());
-  const [isTtdModalOpen, setIsTtdModalOpen] = useState(false);
+
+  const documentRef = useRef<HTMLDivElement>(null);
 
   if (!isOpen) return null;
 
+  const isSuratPengantar = mode === 'surat_pengantar' || mode === 'sk_kgb' || mode === 'disposisi';
+  const docTitle = isSuratPengantar
+    ? `Surat_Pengantar_KGB_${(pengajuan.namaPemohon || 'Pegawai').replace(/[^a-zA-Z0-9]/g, '_')}`
+    : `Tanda_Terima_KGB_${(pengajuan.namaPemohon || 'Pegawai').replace(/[^a-zA-Z0-9]/g, '_')}`;
+
   const handlePrint = () => {
-    window.print();
+    if (documentRef.current) {
+      printElementDirect(documentRef.current, docTitle);
+    } else {
+      window.print();
+    }
   };
 
   const formatRupiah = (val?: number) => {
@@ -51,36 +64,30 @@ export const PrintDocumentModal: React.FC<PrintDocumentModalProps> = ({
           <div className="flex items-center gap-2.5">
             <Printer className="h-4 w-4 text-slate-700" />
             <span className="text-xs font-bold text-slate-900">
-              {mode === 'sk_kgb'
-                ? 'Pratinjau Cetak Surat Rekomendasi/Pemberitahuan KGB'
-                : mode === 'disposisi'
-                ? 'Pratinjau Lembar Disposisi Verifikasi KGB'
-                : 'Pratinjau Tanda Terima Berkas Digital'}
+              {isSuratPengantar
+                ? 'Pratinjau Cetak Surat Pengantar Usulan KGB'
+                : 'Pratinjau Cetak Bukti Tanda Terima Berkas Digital'}
             </span>
           </div>
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => setIsKopModalOpen(true)}
-              className="flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition"
-              title="Atur Nama Instansi, Alamat, dan Logo Kop Surat"
-            >
-              <Building2 className="h-3.5 w-3.5 text-amber-600" />
-              <span>Atur Kop</span>
-            </button>
-            <button
-              onClick={() => setIsTtdModalOpen(true)}
-              className="flex items-center gap-1.5 rounded-lg border border-purple-200 bg-purple-50 px-3 py-1.5 text-xs font-semibold text-purple-800 hover:bg-purple-100 transition"
-              title="Atur Tanda Tangan Digital & Cap Stempel Dinas Resmi"
-            >
-              <Stamp className="h-3.5 w-3.5 text-purple-700" />
-              <span>Atur TTD &amp; Cap</span>
-            </button>
+            {effectiveIsAdmin && (
+              <button
+                onClick={() => setIsKopModalOpen(true)}
+                className="flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition"
+                title="Atur Nama Instansi, Alamat, dan Logo Kop Surat"
+              >
+                <Building2 className="h-3.5 w-3.5 text-amber-600" />
+                <span>Atur Kop</span>
+              </button>
+            )}
+            {/* Action: Cetak Dokumen Langsung */}
             <button
               onClick={handlePrint}
-              className="flex items-center gap-1.5 rounded-lg bg-slate-900 px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-slate-800"
+              className="flex items-center gap-1.5 rounded-lg bg-indigo-700 hover:bg-indigo-800 px-4 py-1.5 text-xs font-bold text-white shadow transition"
+              title="Cetak langsung menggunakan printer atau simpan sebagai PDF via dialog cetak"
             >
               <Printer className="h-3.5 w-3.5" />
-              <span>Cetak / Simpan PDF</span>
+              <span>Cetak Dokumen</span>
             </button>
             <button
               onClick={onClose}
@@ -93,28 +100,62 @@ export const PrintDocumentModal: React.FC<PrintDocumentModalProps> = ({
 
         {/* Printable Sheet Viewport */}
         <div className="flex-1 overflow-y-auto p-6 sm:p-10 bg-slate-100/70">
-          <div className="mx-auto max-w-[210mm] bg-white p-8 sm:p-12 shadow border border-slate-200 text-slate-900 text-sm leading-relaxed print:p-0 print:border-none print:shadow-none">
+          <div
+            ref={documentRef}
+            className="mx-auto max-w-[210mm] bg-white p-8 sm:p-12 shadow border border-slate-200 text-slate-900 text-sm leading-relaxed print:p-0 print:border-none print:shadow-none"
+          >
             {/* KOP SURAT RESMI DINAMIS */}
             <KopSuratHeader config={kopConfig} />
 
-            {/* DOCUMENT CONTENT DEPENDING ON MODE */}
-            {mode === 'sk_kgb' && (
+            {/* DOKUMEN 1: SURAT PENGANTAR USULAN KGB */}
+            {isSuratPengantar && (
               <div>
-                <div className="text-center mb-6">
-                  <h4 className="font-bold underline text-sm uppercase tracking-wide">
-                    SURAT PEMBERITAHUAN KENAIKAN GAJI BERKALA
-                  </h4>
-                  <p className="text-xs text-slate-600 mt-1">
-                    Nomor: {pengajuan.nomorSkKgbDiterbitkan || '045.2/KP.04.00/JB-22/10/2026'}
-                  </p>
+                {/* Header Metadata Surat Dinas Bawaslu */}
+                <div className="flex justify-between items-start text-xs mb-6 font-sans">
+                  <table className="text-xs">
+                    <tbody>
+                      <tr>
+                        <td className="w-20 py-0.5 text-slate-700 font-medium">Nomor</td>
+                        <td className="py-0.5 font-mono">: {pengajuan.nomorSkKgbDiterbitkan || '045.2/KP.04.00/JB-22/10/2026'}</td>
+                      </tr>
+                      <tr>
+                        <td className="py-0.5 text-slate-700 font-medium">Sifat</td>
+                        <td className="py-0.5">: Biasa / Dinas</td>
+                      </tr>
+                      <tr>
+                        <td className="py-0.5 text-slate-700 font-medium">Lampiran</td>
+                        <td className="py-0.5">: 1 (satu) Berkas</td>
+                      </tr>
+                      <tr>
+                        <td className="py-0.5 text-slate-700 font-medium align-top">Perihal</td>
+                        <td className="py-0.5 font-semibold text-slate-900 align-top">
+                          : Usulan Kenaikan Gaji Berkala (KGB)<br />
+                            an. {pengajuan.namaPemohon}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+
+                  <div className="text-right text-xs">
+                    <p className="text-slate-700">
+                      Subang, {pengajuan.tanggalSkDiterbitkan || new Date(pengajuan.tanggalPengajuan).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
+                    </p>
+                    <div className="mt-4 text-left inline-block">
+                      <p className="font-semibold text-slate-900">Kepada Yth.</p>
+                      <p className="font-bold text-slate-900">Kepala Sekretariat Bawaslu Provinsi Jawa Barat</p>
+                      <p className="text-slate-700">Up. Bagian Administrasi / Kepegawaian</p>
+                      <p className="text-slate-700">di -</p>
+                      <p className="font-semibold text-slate-800 pl-4 tracking-wider">B A N D U N G</p>
+                    </div>
+                  </div>
                 </div>
 
-                <div className="space-y-4 text-xs">
+                <div className="space-y-4 text-xs leading-relaxed text-justify">
                   <p>
-                    Dengan ini diberitahukan bahwa berhubung telah dipenuhinya masa kerja dan syarat-syarat lainnya kepada:
+                    Dengan hormat, bersama ini kami sampaikan berkas usulan Kenaikan Gaji Berkala (KGB) Pegawai di lingkungan Sekretariat Badan Pengawas Pemilihan Umum Kabupaten Subang atas nama Pegawai berikut:
                   </p>
 
-                  <table className="w-full border-collapse">
+                  <table className="w-full border-collapse my-2">
                     <tbody>
                       <tr>
                         <td className="w-48 py-1.5 text-slate-700 font-medium">1. Nama Pegawai</td>
@@ -140,167 +181,124 @@ export const PrintDocumentModal: React.FC<PrintDocumentModalProps> = ({
                         <td className="py-1.5 text-slate-700 font-medium">6. Gaji Pokok Lama</td>
                         <td className="py-1.5 font-mono text-slate-950">: {formatRupiah(pengajuan.gajiLama)}</td>
                       </tr>
-                    </tbody>
-                  </table>
-
-                  <p className="pt-2 font-semibold">
-                    Diberikan Kenaikan Gaji Berkala hingga memperoleh:
-                  </p>
-
-                  <table className="w-full border-collapse">
-                    <tbody>
                       <tr>
-                        <td className="w-48 py-1.5 text-slate-700 font-medium">7. Gaji Pokok Baru</td>
+                        <td className="py-1.5 text-slate-700 font-medium">7. Usulan Gaji Pokok Baru</td>
                         <td className="py-1.5 font-bold font-mono text-emerald-800">: {formatRupiah(pengajuan.gajiBaruEstimasi)}</td>
                       </tr>
                       <tr>
-                        <td className="py-1.5 text-slate-700 font-medium">8. Berdasarkan Masa Kerja</td>
-                        <td className="py-1.5 text-slate-950">: 2 (Dua) Tahun 0 Bulan</td>
-                      </tr>
-                      <tr>
-                        <td className="py-1.5 text-slate-700 font-medium">9. Terhitung Mulai Tanggal (TMT)</td>
+                        <td className="py-1.5 text-slate-700 font-medium">8. Terhitung Mulai Tanggal (TMT)</td>
                         <td className="py-1.5 font-bold text-slate-950">: {pengajuan.tmtKgbBaru}</td>
-                      </tr>
-                      <tr>
-                        <td className="py-1.5 text-slate-700 font-medium">10. Kenaikan Gaji Berikutnya</td>
-                        <td className="py-1.5 text-slate-950">: 2 (Dua) Tahun yang akan datang</td>
                       </tr>
                     </tbody>
                   </table>
 
-                  <p className="pt-2 leading-relaxed">
-                    Diharapkan kepada Pegawai yang bersangkutan agar senantiasa meningkatkan kinerja, dedikasi, serta integritas dalam pelaksanaan tugas pengawasan Pemilihan Umum di lingkungan Bawaslu Kabupaten Subang.
+                  <p>
+                    Sebagai bahan pertimbangan dan kelengkapan administrasi pemrosesan lebih lanjut di tingkat Bawaslu Provinsi Jawa Barat, bersama ini kami lampirkan:
+                  </p>
+                  <ol className="list-decimal pl-6 space-y-1 text-slate-800">
+                    <li>Salinan Surat Keputusan (SK) Kenaikan Pangkat Terakhir;</li>
+                    <li>Salinan Surat Keputusan Kenaikan Gaji Berkala (KGB) Terakhir;</li>
+                    <li>Salinan Sasaran Kinerja Pegawai (SKP) dengan predikat capaian kinerja minimal Baik;</li>
+                    <li>Lembar Tanda Terima Pengajuan Berkas Digital ({pengajuan.noPengajuan}).</li>
+                  </ol>
+
+                  <p className="pt-2">
+                    Demikian surat pengantar usulan kenaikan gaji berkala ini kami sampaikan untuk dapat dipergunakan sebagaimana mestinya. Atas perhatian dan perkenan Bapak/Ibu, kami ucapkan terima kasih.
                   </p>
 
                   {/* Signatures */}
                   <div className="pt-8 flex justify-end">
                     <TandaTanganCapBlock
                       config={ttdCapConfig}
-                      tanggalText={pengajuan.tanggalSkDiterbitkan || '04 Oktober 2026'}
+                      mode="pimpinan_saja"
+                      tanggalText={`Subang, ${new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}`}
                       align="right"
                     />
                   </div>
-                </div>
-              </div>
-            )}
 
-            {mode === 'disposisi' && (
-              <div>
-                <div className="text-center mb-6">
-                  <h4 className="font-bold underline text-sm uppercase tracking-wide">
-                    LEMBAR VERIFIKASI & DISPOSISI PENGAJUAN KGB
-                  </h4>
-                  <p className="text-xs text-slate-600 mt-1">
-                    No. Registrasi: {pengajuan.noPengajuan}
-                  </p>
-                </div>
-
-                <table className="w-full border border-slate-300 text-xs mb-4">
-                  <tbody>
-                    <tr className="border-b border-slate-300">
-                      <td className="p-2 bg-slate-50 font-semibold w-40 border-r border-slate-300">Nama Pemohon</td>
-                      <td className="p-2 font-bold">{pengajuan.namaPemohon}</td>
-                    </tr>
-                    <tr className="border-b border-slate-300">
-                      <td className="p-2 bg-slate-50 font-semibold border-r border-slate-300">NIP / Jabatan</td>
-                      <td className="p-2 font-mono">{pengajuan.nipPemohon} / {pengajuan.jabatanPemohon}</td>
-                    </tr>
-                    <tr className="border-b border-slate-300">
-                      <td className="p-2 bg-slate-50 font-semibold border-r border-slate-300">Tanggal Pengajuan</td>
-                      <td className="p-2">{new Date(pengajuan.tanggalPengajuan).toLocaleString('id-ID')}</td>
-                    </tr>
-                    <tr className="border-b border-slate-300">
-                      <td className="p-2 bg-slate-50 font-semibold border-r border-slate-300">Kelengkapan Berkas</td>
-                      <td className="p-2 space-y-1">
-                        <div>✓ SK Pangkat Terakhir ({pengajuan.skPangkatTerakhir.namaFile})</div>
-                        <div>✓ SKP Penilaian Prestasi Kerja ({pengajuan.dokumenSkpPrestasi.namaFile})</div>
-                        {pengajuan.skGajiBerkalaTerakhir && (
-                          <div>✓ SK KGB Terakhir ({pengajuan.skGajiBerkalaTerakhir.namaFile})</div>
-                        )}
-                      </td>
-                    </tr>
-                    <tr className="border-b border-slate-300">
-                      <td className="p-2 bg-slate-50 font-semibold border-r border-slate-300">Status Verifikasi</td>
-                      <td className="p-2 font-bold uppercase text-slate-900">
-                        {pengajuan.status === 'dikirim_ke_provinsi'
-                          ? 'BERKAS DIKIRIM KE BAWASLU PROVINSI'
-                          : pengajuan.status.replace(/_/g, ' ')}
-                      </td>
-                    </tr>
-                    <tr>
-                      <td className="p-2 bg-slate-50 font-semibold border-r border-slate-300">Catatan Petugas</td>
-                      <td className="p-2 italic text-slate-800">
-                        {pengajuan.catatanVerifikator || 'Seluruh berkas persyaratan telah divalidasi dan memenuhi kriteria regulasi.'}
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-
-                <div className="mt-8 grid grid-cols-2 gap-4 items-end text-center text-xs">
-                  <div>
-                    <p className="font-semibold text-slate-700">Petugas Verifikator Kepegawaian</p>
-                    <div className="h-16 flex items-center justify-center text-slate-400 italic">
-                      [Tervalidasi Sistem]
-                    </div>
-                    <p className="font-bold underline">{pengajuan.diverifikasiOleh || 'Staf Sub Bagian Administrasi'}</p>
-                    <p className="font-mono text-[10px] text-slate-500">Staf Kepegawaian Bawaslu</p>
-                  </div>
-                  <div>
-                    <TandaTanganCapBlock
-                      config={ttdCapConfig}
-                      isCompact={true}
-                      align="center"
-                    />
+                  {/* Tembusan */}
+                  <div className="mt-8 border-t border-slate-200 pt-3 text-[11px] text-slate-600">
+                    <span className="font-semibold block mb-1">Tembusan disampaikan Kepada Yth:</span>
+                    <ol className="list-decimal pl-4 space-y-0.5">
+                      <li>Ketua Bawaslu Kabupaten Subang (sebagai laporan);</li>
+                      <li>Kepala Bagian Administrasi Bawaslu Provinsi Jawa Barat;</li>
+                      <li>Pegawai yang bersangkutan;</li>
+                      <li>Arsip Sub Bagian Kepegawaian &amp; SDM.</li>
+                    </ol>
                   </div>
                 </div>
               </div>
             )}
 
-            {mode === 'tanda_terima' && (
+            {/* DOKUMEN 2: BUKTI TANDA TERIMA BERKAS ELEKTRONIK */}
+            {!isSuratPengantar && (
               <div>
                 <div className="text-center mb-6">
                   <h4 className="font-bold underline text-sm uppercase tracking-wide">
                     BUKTI TANDA TERIMA PENGAJUAN KGB ELEKTRONIK
                   </h4>
-                  <p className="text-xs text-slate-600 mt-1">
-                    SI-KGB BAWASLU KABUPATEN SUBANG
+                  <p className="text-xs text-slate-600 mt-1 font-mono">
+                    SI-KGB BADAN PENGAWAS PEMILIHAN UMUM KABUPATEN SUBANG
                   </p>
                 </div>
 
-                <div className="border border-slate-300 p-4 rounded-lg text-xs space-y-3 mb-6 bg-slate-50/50">
-                  <div className="flex justify-between border-b pb-2">
-                    <span className="text-slate-600">Nomor Registrasi:</span>
-                    <span className="font-bold font-mono">{pengajuan.noPengajuan}</span>
+                <div className="border border-slate-300 p-5 rounded-lg text-xs space-y-3 mb-6 bg-slate-50/50">
+                  <div className="flex justify-between border-b border-slate-200 pb-2">
+                    <span className="text-slate-600 font-medium">Nomor Registrasi:</span>
+                    <span className="font-bold font-mono text-indigo-900">{pengajuan.noPengajuan}</span>
                   </div>
-                  <div className="flex justify-between border-b pb-2">
-                    <span className="text-slate-600">Nama Pemohon:</span>
-                    <span className="font-bold">{pengajuan.namaPemohon}</span>
+                  <div className="flex justify-between border-b border-slate-200 pb-2">
+                    <span className="text-slate-600 font-medium">Nama Pemohon:</span>
+                    <span className="font-bold text-slate-900">{pengajuan.namaPemohon}</span>
                   </div>
-                  <div className="flex justify-between border-b pb-2">
-                    <span className="text-slate-600">NIP:</span>
-                    <span className="font-mono">{pengajuan.nipPemohon}</span>
+                  <div className="flex justify-between border-b border-slate-200 pb-2">
+                    <span className="text-slate-600 font-medium">NIP / NIK:</span>
+                    <span className="font-mono text-slate-800">{pengajuan.nipPemohon}</span>
                   </div>
-                  <div className="flex justify-between border-b pb-2">
-                    <span className="text-slate-600">Divisi / Unit Kerja:</span>
-                    <span>{pengajuan.divisiPemohon}</span>
+                  <div className="flex justify-between border-b border-slate-200 pb-2">
+                    <span className="text-slate-600 font-medium">Pangkat / Golongan:</span>
+                    <span className="text-slate-800">{pegawai?.golonganPangkat || 'Penata Muda / III/a'}</span>
                   </div>
-                  <div className="flex justify-between border-b pb-2">
-                    <span className="text-slate-600">Perihal:</span>
-                    <span>{pengajuan.perihal}</span>
+                  <div className="flex justify-between border-b border-slate-200 pb-2">
+                    <span className="text-slate-600 font-medium">Jabatan / Divisi:</span>
+                    <span className="text-slate-800">{pengajuan.jabatanPemohon} - {pengajuan.divisiPemohon}</span>
                   </div>
-                  <div className="flex justify-between border-b pb-2">
-                    <span className="text-slate-600">Waktu Pengajuan:</span>
-                    <span>{new Date(pengajuan.tanggalPengajuan).toLocaleString('id-ID')}</span>
+                  <div className="flex justify-between border-b border-slate-200 pb-2">
+                    <span className="text-slate-600 font-medium">Perihal Permohonan:</span>
+                    <span className="text-slate-800 font-medium">{pengajuan.perihal}</span>
+                  </div>
+                  <div className="flex justify-between border-b border-slate-200 pb-2">
+                    <span className="text-slate-600 font-medium">Waktu Pengajuan:</span>
+                    <span className="font-mono text-slate-800">{new Date(pengajuan.tanggalPengajuan).toLocaleString('id-ID')}</span>
+                  </div>
+                  <div className="flex justify-between border-b border-slate-200 pb-2">
+                    <span className="text-slate-600 font-medium">Kelengkapan Berkas:</span>
+                    <span className="text-slate-800">
+                      SK Pangkat Terakhir ({pengajuan.skPangkatTerakhir.namaFile}), SKP Prestasi ({pengajuan.dokumenSkpPrestasi.namaFile})
+                    </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-slate-600">Estimasi Selesai Verifikasi:</span>
-                    <span className="font-semibold text-slate-800">7 (tujuh) Hari Kerja</span>
+                    <span className="text-slate-600 font-medium">Estimasi Waktu Proses:</span>
+                    <span className="font-semibold text-emerald-800">7 (tujuh) Hari Kerja</span>
                   </div>
                 </div>
 
-                <p className="text-xs text-slate-600 leading-relaxed text-center">
+                <p className="text-xs text-slate-600 leading-relaxed text-center mb-6">
                   Simpan tanda terima digital ini sebagai referensi resmi pemantauan proses kenaikan gaji berkala Anda. Anda juga akan menerima pembaruan status berkala melalui pos-el ke <strong>{pengajuan.emailPemohon}</strong>.
                 </p>
+
+                {/* Signatures */}
+                <div className="pt-4 flex justify-end">
+                  <TandaTanganCapBlock
+                    config={ttdCapConfig}
+                    mode="pimpinan_saja"
+                    customJabatan="Petugas Pelayanan Terpadu Satu Pintu"
+                    customNamaPejabat="SUB BAGIAN ADMINISTRASI BAWASLU SUBANG"
+                    customNip="198906152015031002"
+                    tanggalText={`Subang, ${new Date(pengajuan.tanggalPengajuan).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}`}
+                    align="right"
+                  />
+                </div>
               </div>
             )}
           </div>
@@ -309,17 +307,12 @@ export const PrintDocumentModal: React.FC<PrintDocumentModalProps> = ({
 
       {/* KOP SURAT MODAL */}
       <KopSuratModal
-        isOpen={isKopModalOpen}
+        isOpen={isKopModalOpen && effectiveIsAdmin}
         onClose={() => setIsKopModalOpen(false)}
         onSaved={(newCfg) => setKopConfig(newCfg)}
+        isAdmin={effectiveIsAdmin}
       />
 
-      {/* TANDA TANGAN & CAP MODAL */}
-      <TandaTanganCapModal
-        isOpen={isTtdModalOpen}
-        onClose={() => setIsTtdModalOpen(false)}
-        onSaved={(newCfg) => setTtdCapConfig(newCfg)}
-      />
     </div>
   );
 };

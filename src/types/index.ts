@@ -151,23 +151,43 @@ export interface KopSuratConfig {
   updatedAt?: string;
 }
 
+export interface PejabatSignatureDetail {
+  nama: string;
+  jabatan: string;
+  nip: string;
+  tandaTanganUrl?: string; // Base64 data URL
+  tandaTanganWidthPx?: number; // 90 to 220
+  tampilkanTandaTangan: boolean;
+}
+
 export interface TandaTanganCapConfig {
+  // Pimpinan (Kepala Sekretariat / Ketua Bawaslu)
   namaPejabat: string;
   jabatan: string;
   nip: string;
   kota: string;
   tanggalText?: string;
-  // Tanda Tangan
+  // Tanda Tangan Pimpinan
   tandaTanganUrl?: string; // Base64 data URL
   tandaTanganWidthPx?: number; // 90 to 220
   tampilkanTandaTangan: boolean;
-  // Cap / Stempel
+  // Cap / Stempel Resmi
   capUrl?: string; // Base64 data URL
   capWidthPx?: number; // 80 to 200
   tampilkanCap: boolean;
-  // Tata Letak & Efek
+  // Tata Letak & Efek Cap
   posisiCap: 'tumpang_kiri' | 'sebelah_kiri' | 'sebelah_kanan';
   opacityCap?: number; // 0.5 to 1.0
+
+  // Tanda Tangan Admin (Kasubag Administrasi)
+  adminKasubag?: PejabatSignatureDetail;
+
+  // Format Tampilan pada Cetak Dokumen:
+  // 'dua_pejabat': Menampilkan Kasubag Administrasi (kiri) & Pimpinan + Cap (kanan)
+  // 'pimpinan_saja': Hanya Pimpinan (kanan)
+  // 'admin_saja': Hanya Kasubag Administrasi (kanan)
+  modeTampilanDokumen?: 'dua_pejabat' | 'pimpinan_saja' | 'admin_saja';
+
   updatedAt?: string;
 }
 

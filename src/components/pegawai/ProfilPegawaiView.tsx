@@ -148,7 +148,7 @@ export const ProfilPegawaiView: React.FC<ProfilPegawaiViewProps> = ({
             <div>
               <p className="font-semibold">Data Anda Masih Belum Lengkap ({completeness}%)</p>
               <p className="text-[11px] text-amber-800 mt-0.5">
-                Pastikan nomor WhatsApp aktif, email resmi, dan TMT KGB diisi dengan benar agar sistem dapat mengirimkan notifikasi pengingat dan disposisi permohonan.
+                Pastikan nomor WhatsApp aktif, email resmi, dan TMT KGB diisi dengan benar agar sistem dapat mengirimkan notifikasi pengingat dan surat pengantar permohonan.
               </p>
             </div>
           </div>

@@ -141,10 +141,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin, usersList }) => {
           Sekretariat Badan Pengawas Pemilihan Umum Kabupaten Subang
         </p>
         <p className="mt-0.5">
-          Jl. Veteran No. 12, Kel. Dangdeur, Kec. Subang, Kabupaten Subang, Jawa Barat 41211
-        </p>
-        <p className="mt-1 font-mono text-[10px] text-slate-400">
-          SI-KGB · Terintegrasi Supabase Cloud Database &amp; Real-time Email Service
+          Jl. Palabuan No.9, Kelurahan Sukamelang, Kecamatan Subang, Kabupaten Subang, Jawa Barat 41211.
         </p>
       </div>
     </div>

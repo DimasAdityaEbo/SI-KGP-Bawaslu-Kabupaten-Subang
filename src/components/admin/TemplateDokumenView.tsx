@@ -8,7 +8,8 @@ import {
   Edit2,
   Trash2,
   Copy,
-  Printer,
+  Download,
+  Loader2,
   X,
   Check,
   RotateCcw,
@@ -36,7 +37,7 @@ import {
   getKopSuratConfig,
   getTandaTanganCapConfig,
 } from '../../services/storage';
-import { printElementDirect } from '../../services/printService';
+import { exportElementToPdf } from '../../services/pdfExport';
 import { KopSuratHeader } from '../KopSuratHeader';
 import { KopSuratModal } from './KopSuratModal';
 import { TandaTanganCapBlock } from '../TandaTanganCapBlock';
@@ -105,13 +106,23 @@ export const TemplateDokumenView: React.FC<TemplateDokumenViewProps> = ({
   // Preview Modal state
   const [previewTemplate, setPreviewTemplate] = useState<TemplateDokumen | null>(null);
   const [samplePegawaiId, setSamplePegawaiId] = useState<string>('');
+  const [isDownloading, setIsDownloading] = useState(false);
   const previewSheetRef = useRef<HTMLDivElement>(null);
 
-  const handlePrintPreview = () => {
-    if (previewSheetRef.current) {
-      printElementDirect(previewSheetRef.current, previewTemplate?.judulDokumen || 'Template_Dokumen_Bawaslu');
-    } else {
-      window.print();
+  const handleDownloadPdf = async () => {
+    if (!previewSheetRef.current) return;
+    setIsDownloading(true);
+    try {
+      await exportElementToPdf(previewSheetRef.current, {
+        filename: `${(previewTemplate?.judulDokumen || 'Template_Dokumen_Bawaslu').replace(/[^a-zA-Z0-9]/g, '_')}.pdf`,
+        orientation: 'portrait',
+        format: 'a4',
+      });
+    } catch (err) {
+      console.error('Download PDF error:', err);
+      alert('Gagal mengunduh dokumen PDF.');
+    } finally {
+      setIsDownloading(false);
     }
   };
 
@@ -506,7 +517,7 @@ export const TemplateDokumenView: React.FC<TemplateDokumenViewProps> = ({
                     className="flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition shadow-2xs"
                   >
                     <Eye className="h-3.5 w-3.5 text-sky-600" />
-                    <span>Pratinjau &amp; Uji Cetak</span>
+                    <span>Pratinjau &amp; Unduh PDF</span>
                   </button>
 
                   <div className="flex items-center gap-1">
@@ -888,12 +899,22 @@ export const TemplateDokumenView: React.FC<TemplateDokumenViewProps> = ({
                 </button>
 
                 <button
-                  onClick={handlePrintPreview}
-                  className="flex items-center gap-1.5 rounded-lg bg-slate-900 px-3.5 py-1.5 text-xs font-bold text-white hover:bg-slate-800 transition shadow-xs"
-                  title="Cetak langsung menggunakan printer atau dialog cetak browser"
+                  onClick={handleDownloadPdf}
+                  disabled={isDownloading}
+                  className="flex items-center gap-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 disabled:opacity-60 px-3.5 py-1.5 text-xs font-bold text-white transition shadow-xs"
+                  title="Unduh naskah dinas dalam format PDF"
                 >
-                  <Printer className="h-3.5 w-3.5" />
-                  <span>Cetak</span>
+                  {isDownloading ? (
+                    <>
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      <span>Mengunduh PDF...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Download className="h-3.5 w-3.5" />
+                      <span>Download PDF</span>
+                    </>
+                  )}
                 </button>
 
                 <button

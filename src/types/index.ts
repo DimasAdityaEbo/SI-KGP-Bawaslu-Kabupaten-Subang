@@ -81,6 +81,7 @@ export interface PengajuanKGB {
   tanggalVerifikasi?: string;
   nomorSkKgbDiterbitkan?: string;
   tanggalSkDiterbitkan?: string;
+  dokumenSkKgbDiterbitkan?: DokumenLampiran;
 }
 
 export interface NotificationItem {

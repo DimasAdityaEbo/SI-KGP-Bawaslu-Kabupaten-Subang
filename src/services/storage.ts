@@ -258,6 +258,7 @@ export async function getPengajuanList(): Promise<PengajuanKGB[]> {
             tanggalVerifikasi: d.tanggal_verifikasi || d.tanggalVerifikasi,
             nomorSkKgbDiterbitkan: d.nomor_sk_kgb_diterbitkan || d.nomorSkKgbDiterbitkan,
             tanggalSkDiterbitkan: d.tanggal_sk_diterbitkan || d.tanggalSkDiterbitkan,
+            dokumenSkKgbDiterbitkan: d.dokumen_sk_kgb_diterbitkan || d.dokumenSkKgbDiterbitkan || d.sk_gaji_berkala_terakhir || d.skGajiBerkalaTerakhir,
           };
         });
       }
@@ -347,6 +348,9 @@ export async function savePengajuan(item: PengajuanKGB): Promise<PengajuanKGB> {
         tanggal_verifikasi: item.tanggalVerifikasi ?? null,
         nomor_sk_kgb_diterbitkan: item.nomorSkKgbDiterbitkan ?? null,
         tanggal_sk_diterbitkan: item.tanggalSkDiterbitkan ?? null,
+        dokumen_sk_kgb_diterbitkan: item.dokumenSkKgbDiterbitkan
+          ? { ...item.dokumenSkKgbDiterbitkan, fileData: undefined }
+          : null,
       };
 
       const { error } = await supabase.from('pengajuan_kgb').upsert(dbPayload);

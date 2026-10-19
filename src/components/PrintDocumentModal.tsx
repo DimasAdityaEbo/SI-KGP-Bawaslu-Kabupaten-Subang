@@ -1,8 +1,8 @@
 import React, { useRef, useState } from 'react';
-import { X, Printer, Building2 } from 'lucide-react';
+import { X, Download, Building2, Loader2, FileText } from 'lucide-react';
 import { PengajuanKGB, Pegawai, KopSuratConfig, TandaTanganCapConfig } from '../types';
 import { getKopSuratConfig, getTandaTanganCapConfig, isCurrentUserAdmin } from '../services/storage';
-import { printElementDirect } from '../services/printService';
+import { exportElementToPdf } from '../services/pdfExport';
 import { BawasluLogo } from './BawasluLogo';
 import { KopSuratHeader } from './KopSuratHeader';
 import { KopSuratModal } from './admin/KopSuratModal';
@@ -29,6 +29,7 @@ export const PrintDocumentModal: React.FC<PrintDocumentModalProps> = ({
   const [kopConfig, setKopConfig] = useState<KopSuratConfig>(getKopSuratConfig());
   const [isKopModalOpen, setIsKopModalOpen] = useState(false);
   const [ttdCapConfig, setTtdCapConfig] = useState<TandaTanganCapConfig>(getTandaTanganCapConfig());
+  const [isDownloading, setIsDownloading] = useState(false);
 
   const documentRef = useRef<HTMLDivElement>(null);
 
@@ -39,11 +40,20 @@ export const PrintDocumentModal: React.FC<PrintDocumentModalProps> = ({
     ? `Surat_Pengantar_KGB_${(pengajuan.namaPemohon || 'Pegawai').replace(/[^a-zA-Z0-9]/g, '_')}`
     : `Tanda_Terima_KGB_${(pengajuan.namaPemohon || 'Pegawai').replace(/[^a-zA-Z0-9]/g, '_')}`;
 
-  const handlePrint = () => {
-    if (documentRef.current) {
-      printElementDirect(documentRef.current, docTitle);
-    } else {
-      window.print();
+  const handleDownloadPdf = async () => {
+    if (!documentRef.current) return;
+    setIsDownloading(true);
+    try {
+      await exportElementToPdf(documentRef.current, {
+        filename: `${docTitle}.pdf`,
+        orientation: 'portrait',
+        format: 'a4',
+      });
+    } catch (err) {
+      console.error('Download PDF error:', err);
+      alert('Gagal mengunduh dokumen PDF. Silakan coba kembali.');
+    } finally {
+      setIsDownloading(false);
     }
   };
 
@@ -62,11 +72,11 @@ export const PrintDocumentModal: React.FC<PrintDocumentModalProps> = ({
         {/* Modal Top Bar */}
         <div className="no-print flex items-center justify-between border-b border-slate-200 px-6 py-3.5 bg-slate-50">
           <div className="flex items-center gap-2.5">
-            <Printer className="h-4 w-4 text-slate-700" />
+            <FileText className="h-4 w-4 text-slate-700" />
             <span className="text-xs font-bold text-slate-900">
               {isSuratPengantar
-                ? 'Pratinjau Cetak Surat Pengantar Usulan KGB'
-                : 'Pratinjau Cetak Bukti Tanda Terima Berkas Digital'}
+                ? 'Pratinjau & Unduh Surat Pengantar Usulan KGB (PDF)'
+                : 'Pratinjau & Unduh Bukti Tanda Terima Berkas (PDF)'}
             </span>
           </div>
           <div className="flex items-center gap-2">
@@ -80,14 +90,24 @@ export const PrintDocumentModal: React.FC<PrintDocumentModalProps> = ({
                 <span>Atur Kop</span>
               </button>
             )}
-            {/* Action: Cetak Dokumen Langsung */}
+            {/* Action: Download Dokumen PDF */}
             <button
-              onClick={handlePrint}
-              className="flex items-center gap-1.5 rounded-lg bg-indigo-700 hover:bg-indigo-800 px-4 py-1.5 text-xs font-bold text-white shadow transition"
-              title="Cetak langsung menggunakan printer atau simpan sebagai PDF via dialog cetak"
+              onClick={handleDownloadPdf}
+              disabled={isDownloading}
+              className="flex items-center gap-1.5 rounded-lg bg-indigo-700 hover:bg-indigo-800 disabled:opacity-60 px-4 py-1.5 text-xs font-bold text-white shadow transition"
+              title="Unduh dokumen resmi dalam format PDF langsung ke komputer"
             >
-              <Printer className="h-3.5 w-3.5" />
-              <span>Cetak Dokumen</span>
+              {isDownloading ? (
+                <>
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  <span>Mengunduh PDF...</span>
+                </>
+              ) : (
+                <>
+                  <Download className="h-3.5 w-3.5" />
+                  <span>Download PDF</span>
+                </>
+              )}
             </button>
             <button
               onClick={onClose}

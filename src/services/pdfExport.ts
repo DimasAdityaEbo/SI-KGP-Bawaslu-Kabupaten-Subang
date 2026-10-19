@@ -10,7 +10,7 @@ export interface ExportPdfOptions {
 
 /**
  * Robustly exports any HTML element to a downloadable PDF file using html2canvas & jsPDF.
- * Optimized for official government documents (KGB, Disposisi, Tanda Terima, Laporan).
+ * Optimized for official government documents (Surat Pengantar, Tanda Terima, Laporan KGB).
  */
 export async function exportElementToPdf(
   element: HTMLElement,
@@ -23,13 +23,17 @@ export async function exportElementToPdf(
     scale = 2,
   } = options;
 
+  if (!element) {
+    throw new Error('Elemen dokumen tidak ditemukan');
+  }
+
   // Temporarily ensure element styles are optimal for rendering
   const prevOverflow = element.style.overflow;
   element.style.overflow = 'visible';
 
   try {
     const canvas = await html2canvas(element, {
-      scale: scale, // Higher scale for ultra-crisp vector-like text & seal/stamp quality
+      scale: scale, // Higher scale for crisp text & official stamps
       useCORS: true,
       allowTaint: true,
       backgroundColor: '#ffffff',
@@ -84,105 +88,9 @@ export async function exportElementToPdf(
     const safeFilename = filename.endsWith('.pdf') ? filename : `${filename}.pdf`;
     pdf.save(safeFilename);
   } catch (error) {
-    console.error('Gagal menghasilkan PDF via jsPDF:', error);
-    // Fallback: trigger print dialog if canvas generation fails
-    window.print();
+    console.error('Gagal mengekspor PDF via jsPDF:', error);
     throw error;
   } finally {
     element.style.overflow = prevOverflow;
-  }
-}
-
-/**
- * Prints only the specified element cleanly without showing modal dialog overlays,
- * sidebar, or window chrome.
- */
-export function printElementIsolated(element: HTMLElement, title: string = 'Dokumen Bawaslu'): void {
-  try {
-    // Create an invisible iframe for isolated printing
-    const iframe = document.createElement('iframe');
-    iframe.style.position = 'fixed';
-    iframe.style.right = '0';
-    iframe.style.bottom = '0';
-    iframe.style.width = '0';
-    iframe.style.height = '0';
-    iframe.style.border = '0';
-    document.body.appendChild(iframe);
-
-    const doc = iframe.contentWindow?.document;
-    if (!doc) {
-      window.print();
-      return;
-    }
-
-    // Collect all stylesheets from host document
-    let styleSheetsHtml = '';
-    const styleTags = document.querySelectorAll('style, link[rel="stylesheet"]');
-    styleTags.forEach((tag) => {
-      styleSheetsHtml += tag.outerHTML;
-    });
-
-    // Write isolated printable document
-    doc.open();
-    doc.write(`
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <title>${title}</title>
-          <meta charset="utf-8" />
-          <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-          ${styleSheetsHtml}
-          <style>
-            @page {
-              size: A4 portrait;
-              margin: 10mm 12mm 10mm 12mm;
-            }
-            body {
-              background: #ffffff !important;
-              color: #000000 !important;
-              font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif !important;
-              margin: 0 !important;
-              padding: 0 !important;
-            }
-            .no-print {
-              display: none !important;
-            }
-            .print-break-inside-avoid {
-              break-inside: avoid !important;
-              page-break-inside: avoid !important;
-            }
-            table {
-              border-collapse: collapse !important;
-            }
-          </style>
-        </head>
-        <body class="bg-white text-slate-900 p-4">
-          <div style="max-width: 210mm; margin: 0 auto;">
-            ${element.outerHTML}
-          </div>
-        </body>
-      </html>
-    `);
-    doc.close();
-
-    // Give iframe a moment to render all resources/images
-    setTimeout(() => {
-      try {
-        iframe.contentWindow?.focus();
-        iframe.contentWindow?.print();
-      } catch (e) {
-        console.warn('Iframe print failed, falling back to window.print()', e);
-        window.print();
-      } finally {
-        setTimeout(() => {
-          if (document.body.contains(iframe)) {
-            document.body.removeChild(iframe);
-          }
-        }, 3000);
-      }
-    }, 400);
-  } catch (err) {
-    console.warn('Isolated print error:', err);
-    window.print();
   }
 }

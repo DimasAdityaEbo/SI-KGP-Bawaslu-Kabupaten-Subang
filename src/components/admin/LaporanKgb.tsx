@@ -1,7 +1,8 @@
 import React, { useState, useRef } from 'react';
 import {
   BarChart3,
-  Printer,
+  Download,
+  Loader2,
   Calendar,
   Filter,
   Building2,
@@ -10,7 +11,7 @@ import {
 import { PengajuanKGB, Pegawai, KopSuratConfig, TandaTanganCapConfig } from '../../types';
 import { DIVISI_OPTIONS } from '../../data/seedData';
 import { getKopSuratConfig, getTandaTanganCapConfig } from '../../services/storage';
-import { printElementDirect } from '../../services/printService';
+import { exportElementToPdf } from '../../services/pdfExport';
 import { BawasluLogo } from '../BawasluLogo';
 import { KopSuratHeader } from '../KopSuratHeader';
 import { KopSuratModal } from './KopSuratModal';
@@ -26,7 +27,7 @@ export const LaporanKgb: React.FC<LaporanKgbProps> = ({ pengajuanList, pegawaiLi
   const [endDate, setEndDate] = useState('2026-12-31');
   const [filterDivisi, setFilterDivisi] = useState('ALL');
   const [filterStatus, setFilterStatus] = useState('ALL');
-  const [isPrintPreview, setIsPrintPreview] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
   const [kopConfig, setKopConfig] = useState<KopSuratConfig>(getKopSuratConfig());
   const [isKopModalOpen, setIsKopModalOpen] = useState(false);
   const [ttdCapConfig, setTtdCapConfig] = useState<TandaTanganCapConfig>(getTandaTanganCapConfig());
@@ -46,11 +47,20 @@ export const LaporanKgb: React.FC<LaporanKgbProps> = ({ pengajuanList, pegawaiLi
   const countPending = filteredData.filter((i) => i.status === 'menunggu_verifikasi').length;
   const countRevision = filteredData.filter((i) => i.status === 'perlu_perbaikan').length;
 
-  const handlePrint = () => {
-    if (reportRef.current) {
-      printElementDirect(reportRef.current, `Laporan_Rekap_KGB_Bawaslu_${startDate}_sd_${endDate}`);
-    } else {
-      window.print();
+  const handleDownloadPdf = async () => {
+    if (!reportRef.current) return;
+    setIsDownloading(true);
+    try {
+      await exportElementToPdf(reportRef.current, {
+        filename: `Laporan_Rekap_KGB_Bawaslu_${startDate}_sd_${endDate}.pdf`,
+        orientation: 'landscape',
+        format: 'a4',
+      });
+    } catch (err) {
+      console.error('Download laporan PDF error:', err);
+      alert('Gagal mengunduh laporan PDF. Silakan coba kembali.');
+    } finally {
+      setIsDownloading(false);
     }
   };
 
@@ -63,7 +73,7 @@ export const LaporanKgb: React.FC<LaporanKgbProps> = ({ pengajuanList, pegawaiLi
             Laporan Kenaikan Gaji Berkala (KGB)
           </h1>
           <p className="text-xs text-slate-500 mt-0.5">
-            Rekapitulasi berkas pengajuan KGB per divisi, pemantauan status, dan cetak laporan resmi.
+            Rekapitulasi berkas pengajuan KGB per divisi, pemantauan status, dan unduh laporan resmi format PDF.
           </p>
         </div>
 
@@ -77,12 +87,22 @@ export const LaporanKgb: React.FC<LaporanKgbProps> = ({ pengajuanList, pegawaiLi
             <span>Atur Kop Surat</span>
           </button>
           <button
-            onClick={handlePrint}
-            className="flex items-center gap-1.5 rounded-lg bg-indigo-700 hover:bg-indigo-800 px-4 py-2 text-xs font-bold text-white shadow transition"
-            title="Cetak langsung laporan atau simpan sebagai PDF melalui dialog cetak"
+            onClick={handleDownloadPdf}
+            disabled={isDownloading}
+            className="flex items-center gap-1.5 rounded-lg bg-indigo-700 hover:bg-indigo-800 disabled:opacity-60 px-4 py-2 text-xs font-bold text-white shadow transition"
+            title="Unduh laporan resmi format PDF"
           >
-            <Printer className="h-4 w-4" />
-            <span>Cetak Laporan</span>
+            {isDownloading ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span>Mengunduh PDF...</span>
+              </>
+            ) : (
+              <>
+                <Download className="h-4 w-4" />
+                <span>Download Laporan (PDF)</span>
+              </>
+            )}
           </button>
         </div>
       </div>

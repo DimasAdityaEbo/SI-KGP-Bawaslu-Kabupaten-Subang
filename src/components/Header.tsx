@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { User, NotificationItem } from '../types';
-import { Bell, Database, Mail, LogOut, CheckCircle2, UserCircle, ExternalLink, Shield, KeyRound } from 'lucide-react';
+import { Bell, LogOut } from 'lucide-react';
 import { BawasluLogo } from './BawasluLogo';
 
 interface HeaderProps {
@@ -9,11 +9,6 @@ interface HeaderProps {
   onLogout: () => void;
   notifications: NotificationItem[];
   onOpenNotifications: () => void;
-  onOpenSupabaseModal: () => void;
-  onOpenEmailLogs: () => void;
-  onOpenUbahPassword: () => void;
-  supabaseConnected: boolean;
-  totalEmailsSent: number;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -22,11 +17,6 @@ export const Header: React.FC<HeaderProps> = ({
   onLogout,
   notifications,
   onOpenNotifications,
-  onOpenSupabaseModal,
-  onOpenEmailLogs,
-  onOpenUbahPassword,
-  supabaseConnected,
-  totalEmailsSent,
 }) => {
   const unreadCount = notifications.filter((n) => !n.isRead).length;
   const displayName = pegawaiName || currentUser.namaLengkap;
@@ -51,51 +41,8 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
       </div>
 
-      {/* Zone 2: System Status & Integration Badges (Admin Only) */}
-      {currentUser.role === 'admin' && (
-        <div className="hidden items-center gap-2 lg:flex">
-          {/* Supabase Status Trigger */}
-          <button
-            onClick={onOpenSupabaseModal}
-            title="Klik untuk membuka Konfigurasi Database Supabase"
-            className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50/80 px-2.5 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-100"
-          >
-            <span
-              className={`h-2 w-2 rounded-full ${
-                supabaseConnected ? 'bg-emerald-500 ring-2 ring-emerald-200' : 'bg-amber-500 ring-2 ring-amber-200'
-              }`}
-            />
-            <Database className="h-3.5 w-3.5 text-slate-500" />
-            <span>{supabaseConnected ? 'Supabase Aktif' : 'Penyimpanan Sinkron'}</span>
-          </button>
-
-          {/* Real-time Email Logs Trigger */}
-          <button
-            onClick={onOpenEmailLogs}
-            title="Lihat Log Notifikasi Email Real-time Bawaslu Subang"
-            className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50/80 px-2.5 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-100"
-          >
-            <Mail className="h-3.5 w-3.5 text-sky-600" />
-            <span>Log Email</span>
-            <span className="font-mono-numbers rounded bg-sky-100 px-1.5 py-0.2 text-[10px] font-bold text-sky-800">
-              {totalEmailsSent}
-            </span>
-          </button>
-        </div>
-      )}
-
-      {/* Zone 3: User Info, Ubah Password, Notifications, Logout */}
+      {/* User Info, Notifications, Logout */}
       <div className="flex items-center gap-2 sm:gap-3">
-        {/* Ubah Password Button */}
-        <button
-          onClick={onOpenUbahPassword}
-          title="Ubah Password Akun"
-          className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-amber-50 hover:text-amber-900 hover:border-amber-300"
-        >
-          <KeyRound className="h-3.5 w-3.5 text-amber-600" />
-          <span className="hidden md:inline">Ubah Password</span>
-        </button>
-
         {/* Notifications Icon */}
         <button
           onClick={onOpenNotifications}

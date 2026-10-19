@@ -90,19 +90,40 @@ function initializeLocalStorage(): void {
 
 initializeLocalStorage();
 
+export function getLocalDataSnapshot(): {
+  pegawai: Pegawai[];
+  users: User[];
+  pengajuan: PengajuanKGB[];
+  notifications: NotificationItem[];
+  emailLogs: EmailDispatchLog[];
+} {
+  const readList = <T,>(key: string, fallback: T[]): T[] => {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) as T[] : fallback;
+  };
+
+  return {
+    pegawai: readList(KEYS.PEGAWAI, INITIAL_PEGAWAI),
+    users: readList(KEYS.USERS, INITIAL_USERS),
+    pengajuan: readList(KEYS.PENGAJUAN, INITIAL_PENGAJUAN),
+    notifications: readList(KEYS.NOTIFICATIONS, INITIAL_NOTIFICATIONS),
+    emailLogs: readList(KEYS.EMAIL_LOGS, INITIAL_EMAIL_LOGS),
+  };
+}
+
 // ======================== PEGAWAI REPOSITORY ========================
 export async function getPegawaiList(): Promise<Pegawai[]> {
   const supabase = getSupabaseClient();
   if (supabase) {
     try {
       const { data, error } = await supabase.from('pegawai').select('*').order('nama', { ascending: true });
-      if (!error && data && data.length > 0) {
-        // Map database fields to Pegawai interface
-        return data.map((d: any) => ({
+      if (error) throw new Error(error.message);
+      if (data) {
+        return data.map((d) => ({
           id: d.id,
           nama: d.nama,
           tempatLahir: d.tempat_lahir || d.tempatLahir,
-          tanggalLahir: d.tanggal_lahir || d.tanggalLahir,
+          tanggalLahir: d.tanggal_lahir || d.tanggalLahir || '',
           jabatan: d.jabatan,
           nip: d.nip,
           jenisKelamin: d.jenis_kelamin || d.jenisKelamin,
@@ -112,8 +133,8 @@ export async function getPegawaiList(): Promise<Pegawai[]> {
           alamatRumah: d.alamat_rumah || d.alamatRumah,
           email: d.email,
           agama: d.agama,
-          tanggalPelantikan: d.tanggal_pelantikan || d.tanggalPelantikan,
-          jadwalKgbBerikutnya: d.jadwal_kgb_berikutnya || d.jadwalKgbBerikutnya,
+          tanggalPelantikan: d.tanggal_pelantikan || d.tanggalPelantikan || '',
+          jadwalKgbBerikutnya: d.jadwal_kgb_berikutnya || d.jadwalKgbBerikutnya || '',
           gajiPokokTerakhir: d.gaji_pokok_terakhir ?? d.gajiPokokTerakhir,
           golonganPangkat: d.golongan_pangkat || d.golonganPangkat,
           pangkatTerakhir: d.pangkat_terakhir || d.pangkatTerakhir,
@@ -121,7 +142,8 @@ export async function getPegawaiList(): Promise<Pegawai[]> {
         }));
       }
     } catch (e) {
-      console.warn('Supabase fetch pegawai error, falling back to local:', e);
+      console.error('Supabase fetch pegawai error:', e);
+      throw e;
     }
   }
 
@@ -142,7 +164,7 @@ export async function savePegawai(pegawai: Pegawai): Promise<Pegawai> {
         id: pegawai.id,
         nama: pegawai.nama,
         tempat_lahir: pegawai.tempatLahir,
-        tanggal_lahir: pegawai.tanggalLahir,
+        tanggal_lahir: pegawai.tanggalLahir || null,
         jabatan: pegawai.jabatan,
         nip: pegawai.nip,
         jenis_kelamin: pegawai.jenisKelamin,
@@ -152,15 +174,17 @@ export async function savePegawai(pegawai: Pegawai): Promise<Pegawai> {
         alamat_rumah: pegawai.alamatRumah,
         email: pegawai.email,
         agama: pegawai.agama,
-        tanggal_pelantikan: pegawai.tanggalPelantikan,
-        jadwal_kgb_berikutnya: pegawai.jadwalKgbBerikutnya,
+        tanggal_pelantikan: pegawai.tanggalPelantikan || null,
+        jadwal_kgb_berikutnya: pegawai.jadwalKgbBerikutnya || null,
         gaji_pokok_terakhir: pegawai.gajiPokokTerakhir,
         golongan_pangkat: pegawai.golonganPangkat,
         pangkat_terakhir: pegawai.pangkatTerakhir,
       };
-      await supabase.from('pegawai').upsert(dbPayload);
+      const { error } = await supabase.from('pegawai').upsert(dbPayload);
+      if (error) throw new Error(error.message);
     } catch (e) {
       console.warn('Supabase save pegawai error:', e);
+      throw e;
     }
   }
 
@@ -182,9 +206,11 @@ export async function deletePegawai(id: string): Promise<boolean> {
   const supabase = getSupabaseClient();
   if (supabase) {
     try {
-      await supabase.from('pegawai').delete().eq('id', id);
+      const { error } = await supabase.from('pegawai').delete().eq('id', id);
+      if (error) throw new Error(error.message);
     } catch (e) {
       console.warn('Supabase delete error:', e);
+      throw e;
     }
   }
 
@@ -204,8 +230,9 @@ export async function getPengajuanList(): Promise<PengajuanKGB[]> {
         .select('*')
         .order('tanggal_pengajuan', { ascending: false });
 
-      if (!error && data && data.length > 0) {
-        return data.map((d: any) => {
+      if (error) throw new Error(error.message);
+      if (data) {
+        return data.map((d) => {
           let resolvedStatus = (d.status || 'menunggu_verifikasi') as PengajuanStatus;
 
           // Check if fallback sub_status is preserved in dokumen_pendukung_lain
@@ -263,7 +290,8 @@ export async function getPengajuanList(): Promise<PengajuanKGB[]> {
         });
       }
     } catch (e) {
-      console.warn('Supabase fetch pengajuan error, using local:', e);
+      console.error('Supabase fetch pengajuan error:', e);
+      throw e;
     }
   }
 
@@ -291,24 +319,8 @@ export async function savePengajuan(item: PengajuanKGB): Promise<PengajuanKGB> {
     console.warn('Could not save binary to IndexedDB:', e);
   }
 
-  // 2. Safe local storage persistence immediately (prevents UI race conditions)
-  try {
-    const raw = localStorage.getItem(KEYS.PENGAJUAN);
-    const localList: PengajuanKGB[] = raw ? JSON.parse(raw) : INITIAL_PENGAJUAN;
-    const index = localList.findIndex((p) => p.id === item.id);
-    let updated: PengajuanKGB[];
-    if (index >= 0) {
-      updated = [...localList];
-      updated[index] = item;
-    } else {
-      updated = [item, ...localList];
-    }
-    safeLocalStorageSet(KEYS.PENGAJUAN, updated);
-  } catch (e) {
-    console.warn('Safe localStorage set pengajuan error:', e);
-  }
-
-  // 3. Supabase Cloud Sync
+  // Sync to Supabase before updating the local cache, so failed requests do not
+  // leave a local-only submission that appears to have succeeded.
   const supabase = getSupabaseClient();
   if (supabase) {
     try {
@@ -348,9 +360,14 @@ export async function savePengajuan(item: PengajuanKGB): Promise<PengajuanKGB> {
         tanggal_verifikasi: item.tanggalVerifikasi ?? null,
         nomor_sk_kgb_diterbitkan: item.nomorSkKgbDiterbitkan ?? null,
         tanggal_sk_diterbitkan: item.tanggalSkDiterbitkan ?? null,
-        dokumen_sk_kgb_diterbitkan: item.dokumenSkKgbDiterbitkan
-          ? { ...item.dokumenSkKgbDiterbitkan, fileData: undefined }
-          : null,
+        ...(item.dokumenSkKgbDiterbitkan
+          ? {
+              dokumen_sk_kgb_diterbitkan: {
+                ...item.dokumenSkKgbDiterbitkan,
+                fileData: undefined,
+              },
+            }
+          : {}),
       };
 
       const { error } = await supabase.from('pengajuan_kgb').upsert(dbPayload);
@@ -377,15 +394,35 @@ export async function savePengajuan(item: PengajuanKGB): Promise<PengajuanKGB> {
             .from('pengajuan_kgb')
             .upsert(fallbackPayload);
           if (fallbackError) {
-            console.error('Supabase fallback save failed:', fallbackError);
+            throw new Error(
+              `Supabase fallback save failed (${fallbackError.code}): ${fallbackError.message}`
+            );
           } else {
             console.info('Supabase fallback saved successfully with _sub_status:', item.status);
           }
+        } else {
+          throw new Error(`${error.code}: ${error.message}`);
         }
       }
     } catch (e) {
       console.warn('Supabase save pengajuan error:', e);
+      throw e;
     }
+  }
+
+  try {
+    const raw = localStorage.getItem(KEYS.PENGAJUAN);
+    const localList: PengajuanKGB[] = raw ? JSON.parse(raw) : INITIAL_PENGAJUAN;
+    const index = localList.findIndex((p) => p.id === item.id);
+    const updated = [...localList];
+    if (index >= 0) {
+      updated[index] = item;
+    } else {
+      updated.unshift(item);
+    }
+    safeLocalStorageSet(KEYS.PENGAJUAN, updated);
+  } catch (e) {
+    console.warn('Safe localStorage set pengajuan error:', e);
   }
 
   return item;
@@ -409,9 +446,11 @@ export async function deletePengajuan(id: string): Promise<boolean> {
       const { error } = await supabase.from('pengajuan_kgb').delete().eq('id', id);
       if (error) {
         console.warn('Supabase delete pengajuan error:', error);
+        throw new Error(`${error.code}: ${error.message}`);
       }
     } catch (err) {
       console.warn('Supabase delete pengajuan exception:', err);
+      throw err;
     }
   }
 
@@ -424,8 +463,9 @@ export async function getUsersList(): Promise<User[]> {
   if (supabase) {
     try {
       const { data, error } = await supabase.from('users').select('*');
-      if (!error && data && data.length > 0) {
-        return data.map((d: any) => ({
+      if (error) throw new Error(error.message);
+      if (data) {
+        return data.map((d) => ({
           id: d.id,
           username: d.username,
           password: d.password,
@@ -439,7 +479,8 @@ export async function getUsersList(): Promise<User[]> {
         }));
       }
     } catch (e) {
-      console.warn('Supabase users fetch error:', e);
+      console.error('Supabase users fetch error:', e);
+      throw e;
     }
   }
 
@@ -466,9 +507,11 @@ export async function saveUser(user: User): Promise<User> {
         status: user.status,
         last_login: user.lastLogin,
       };
-      await supabase.from('users').upsert(payload);
+      const { error } = await supabase.from('users').upsert(payload);
+      if (error) throw new Error(error.message);
     } catch (e) {
       console.warn('Supabase save user error:', e);
+      throw e;
     }
   }
 
@@ -489,9 +532,11 @@ export async function deleteUser(id: string): Promise<boolean> {
   const supabase = getSupabaseClient();
   if (supabase) {
     try {
-      await supabase.from('users').delete().eq('id', id);
+      const { error } = await supabase.from('users').delete().eq('id', id);
+      if (error) throw new Error(error.message);
     } catch (e) {
       console.warn('Supabase delete user error:', e);
+      throw e;
     }
   }
 
@@ -510,8 +555,9 @@ export async function getNotifications(): Promise<NotificationItem[]> {
         .from('notifikasi')
         .select('*')
         .order('created_at', { ascending: false });
-      if (!error && data && data.length > 0) {
-        return data.map((d: any) => ({
+      if (error) throw new Error(error.message);
+      if (data) {
+        return data.map((d) => ({
           id: d.id,
           userId: d.user_id || d.userId,
           title: d.title,
@@ -522,7 +568,8 @@ export async function getNotifications(): Promise<NotificationItem[]> {
         }));
       }
     } catch (e) {
-      console.warn('Supabase fetch notifikasi error, fallback local:', e);
+      console.error('Supabase fetch notifikasi error:', e);
+      throw e;
     }
   }
 
@@ -542,7 +589,7 @@ export async function addNotification(item: NotificationItem): Promise<void> {
   const supabase = getSupabaseClient();
   if (supabase) {
     try {
-      await supabase.from('notifikasi').insert({
+      const { error } = await supabase.from('notifikasi').insert({
         id: item.id,
         user_id: item.userId || null,
         title: item.title,
@@ -550,8 +597,10 @@ export async function addNotification(item: NotificationItem): Promise<void> {
         type: item.type,
         is_read: item.isRead,
       });
+      if (error) throw new Error(error.message);
     } catch (e) {
       console.warn('Supabase add notifikasi error:', e);
+      throw e;
     }
   }
 }
@@ -564,9 +613,11 @@ export async function markNotificationAsRead(id: string): Promise<void> {
   const supabase = getSupabaseClient();
   if (supabase) {
     try {
-      await supabase.from('notifikasi').update({ is_read: true }).eq('id', id);
+      const { error } = await supabase.from('notifikasi').update({ is_read: true }).eq('id', id);
+      if (error) throw new Error(error.message);
     } catch (e) {
       console.warn('Supabase update notifikasi error:', e);
+      throw e;
     }
   }
 }
@@ -585,12 +636,18 @@ export async function markAllNotificationsAsRead(userId?: string): Promise<void>
   if (supabase) {
     try {
       if (userId) {
-        await supabase.from('notifikasi').update({ is_read: true }).eq('user_id', userId);
+        const { error } = await supabase
+          .from('notifikasi')
+          .update({ is_read: true })
+          .eq('user_id', userId);
+        if (error) throw new Error(error.message);
       } else {
-        await supabase.from('notifikasi').update({ is_read: true });
+        const { error } = await supabase.from('notifikasi').update({ is_read: true });
+        if (error) throw new Error(error.message);
       }
     } catch (e) {
       console.warn('Supabase markAll notifikasi error:', e);
+      throw e;
     }
   }
 }
@@ -604,8 +661,9 @@ export async function getEmailLogs(): Promise<EmailDispatchLog[]> {
         .from('email_logs')
         .select('*')
         .order('timestamp', { ascending: false });
-      if (!error && data && data.length > 0) {
-        return data.map((d: any) => ({
+      if (error) throw new Error(error.message);
+      if (data) {
+        return data.map((d) => ({
           id: d.id,
           toEmail: d.to_email || d.toEmail,
           toName: d.to_name || d.toName,
@@ -618,7 +676,8 @@ export async function getEmailLogs(): Promise<EmailDispatchLog[]> {
         }));
       }
     } catch (e) {
-      console.warn('Supabase fetch email_logs error, fallback local:', e);
+      console.error('Supabase fetch email_logs error:', e);
+      throw e;
     }
   }
 
@@ -638,7 +697,7 @@ export async function addEmailLog(log: EmailDispatchLog): Promise<void> {
   const supabase = getSupabaseClient();
   if (supabase) {
     try {
-      await supabase.from('email_logs').insert({
+      const { error } = await supabase.from('email_logs').insert({
         id: log.id,
         to_email: log.toEmail,
         to_name: log.toName,
@@ -649,8 +708,10 @@ export async function addEmailLog(log: EmailDispatchLog): Promise<void> {
         no_pengajuan: log.noPengajuan || null,
         timestamp: log.timestamp,
       });
+      if (error) throw new Error(error.message);
     } catch (e) {
       console.warn('Supabase add email log error:', e);
+      throw e;
     }
   }
 }
@@ -661,7 +722,30 @@ export async function getTemplatesList(): Promise<TemplateDokumen[]> {
     const raw = localStorage.getItem(KEYS.TEMPLATES);
     if (!raw) return INITIAL_TEMPLATES;
     const parsed: TemplateDokumen[] = JSON.parse(raw);
-    const filtered = parsed.filter(
+    const defaultPengantar = INITIAL_TEMPLATES.find((template) => template.id === 'tmpl-pengantar-provinsi');
+    let migrated = false;
+    const currentTemplates = parsed.map((template) => {
+      if (
+        defaultPengantar &&
+        template.id === defaultPengantar.id &&
+        template.isDefault &&
+        template.isiKonten.startsWith(
+          'Bersama ini kami sampaikan dengan hormat kelengkapan berkas usulan Kenaikan Gaji Berkala'
+        )
+      ) {
+        migrated = true;
+        return {
+          ...template,
+          ...defaultPengantar,
+          createdAt: template.createdAt,
+          updatedAt: new Date().toISOString(),
+        };
+      }
+      return template;
+    });
+    if (migrated) safeLocalStorageSet(KEYS.TEMPLATES, currentTemplates);
+
+    const filtered = currentTemplates.filter(
       (t) => t.kategori === 'surat_pengantar' || t.kategori === 'tanda_terima'
     );
     return filtered.length > 0 ? filtered : INITIAL_TEMPLATES;
@@ -848,5 +932,3 @@ export function resetTandaTanganCapConfig(forcedIsAdmin?: boolean): TandaTanganC
   } catch (e) {}
   return DEFAULT_TTD_CAP;
 }
-
-

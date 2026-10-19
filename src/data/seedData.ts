@@ -428,36 +428,41 @@ export const INITIAL_TEMPLATES: TemplateDokumen[] = [
   {
     id: 'tmpl-pengantar-provinsi',
     nama: 'Surat Pengantar Usulan KGB ke Bawaslu Provinsi Jawa Barat',
-    deskripsi: 'Surat dinas resmi pengantar penyampaian berkas usulan kenaikan gaji berkala ke Bawaslu Provinsi.',
+    deskripsi: 'Surat pengantar usulan Kenaikan Gaji Berkala pegawai kepada Bawaslu Provinsi Jawa Barat.',
     kategori: 'surat_pengantar',
-    formatNomor: '045.2/KP.04.00/JB-22/{BULAN}/{TAHUN}',
-    judulDokumen: 'SURAT PENGANTAR USULAN KENAIKAN GAJI BERKALA',
-    isiKonten: `Bersama ini kami sampaikan dengan hormat kelengkapan berkas usulan Kenaikan Gaji Berkala (KGB) Pegawai Negeri Sipil / Aparatur Sipil Negara pada Sekretariat Badan Pengawas Pemilihan Umum Kabupaten Subang atas nama:
+    formatNomor: '001/KP.03.01/JB-15/{BULAN_PADDED}/{TAHUN}',
+    judulDokumen: 'SURAT PENGANTAR',
+    isiKonten: `Subang, {TANGGAL_SURAT}
 
-1. Nama Pegawai       : {NAMA_PEGAWAI}
-2. NIP / NIK          : {NIP}
-3. Pangkat / Golongan : {PANGKAT_GOLONGAN}
-4. Jabatan            : {JABATAN}
-5. Unit Kerja         : {UNIT_KERJA}
-6. TMT KGB Baru       : {TMT_KGB_BARU}
-7. Gaji Pokok Lama    : Rp {GAJI_POKOK_LAMA}
-8. Gaji Pokok Baru    : Rp {GAJI_POKOK_BARU}
+Nomor : {NOMOR_SURAT}
+Sifat : Biasa
+Lampiran : 1 (Satu) Bundel
+Hal : Usulan Kenaikan Gaji Berkala di Sekretariat Bawaslu Kabupaten Subang
 
-Sebagai bahan pertimbangan dan proses lebih lanjut di tingkat Bawaslu Provinsi Jawa Barat, bersama ini kami lampirkan:
-1. Salinan Surat Keputusan Kenaikan Pangkat Terakhir;
-2. Salinan Surat Pemberitahuan Kenaikan Gaji Berkala Terakhir;
-3. Salinan Penilaian Sasaran Kinerja Pegawai (SKP) 2 Tahun Terakhir dengan predikat minimal Baik;
-4. Lembar Hasil Disposisi / Verifikasi Berkas Kepegawaian Bawaslu Kabupaten Subang.
+Yth. Kepala Sekretariat Bawaslu Provinsi Jawa Barat
+di
+  Bandung
 
-Demikian surat pengantar ini kami sampaikan. Atas perhatian dan kerja sama yang baik, kami ucapkan terima kasih.`,
+Dengan hormat,
+
+Sehubungan dengan Kenaikan Gaji Berkala Periode {TMT_KGB_FORMAT}, bersama ini kami sampaikan usulan Kenaikan Gaji Berkala untuk Pegawai Negeri Sipil (PNS) Bawaslu Kabupaten Subang dengan data Pegawai sebagai berikut:
+
+Nama : {NAMA_PEGAWAI}
+NIP : {NIP}
+Golongan : {PANGKAT_GOLONGAN}
+Jabatan : {JABATAN}
+
+Sebagai dasar pertimbangan usulan ini, kami lampirkan berkas-berkas pendukung yang dipersyaratkan antara lain sebagai berikut:
+1. Surat Keputusan Pengangkatan PNS/ PPPK
+2. Surat Keputusan Kenaikan Gaji Berkala*)
+3. Sasaran Kinerja Pegawai 2 Tahun Terakhir
+
+Demikian surat usulan ini disampaikan, untuk digunakan sebagaimana mestinya. Atas perhatiannya diucapkan terima kasih.`,
+
     penandatanganNama: 'H. TATANG KOSWARA, S.Sos., M.Si',
     penandatanganJabatan: 'Kepala Sekretariat Bawaslu Kabupaten Subang',
     penandatanganNip: '197405121998031002',
-    tembusan: [
-      '1. Ketua Bawaslu Kabupaten Subang',
-      '2. Kepala Bagian Administrasi Bawaslu Provinsi Jawa Barat',
-      '3. Arsip Sub Bagian Kepegawaian & SDM'
-    ],
+    tembusan: [],
     isDefault: true,
     createdAt: '2026-01-01T00:00:00Z',
   },

@@ -11,8 +11,6 @@ import {
   Sparkles,
   ArrowRight,
   ShieldAlert,
-  KeyRound,
-  UserCheck,
   Send,
 } from 'lucide-react';
 import { Pegawai, PengajuanKGB, User } from '../../types';
@@ -23,7 +21,6 @@ interface PegawaiDashboardProps {
   pengajuanList: PengajuanKGB[];
   onSelectTab: (tab: string) => void;
   onViewPengajuan: (pengajuan: PengajuanKGB) => void;
-  onOpenUbahPassword?: () => void;
 }
 
 export const PegawaiDashboard: React.FC<PegawaiDashboardProps> = ({
@@ -32,7 +29,6 @@ export const PegawaiDashboard: React.FC<PegawaiDashboardProps> = ({
   pengajuanList,
   onSelectTab,
   onViewPengajuan,
-  onOpenUbahPassword,
 }) => {
   // Filter submissions by this employee, sorted by date descending
   const mySubmissions = [...pengajuanList.filter((p) => p.pegawaiId === pegawai.id)].sort(
@@ -80,46 +76,6 @@ export const PegawaiDashboard: React.FC<PegawaiDashboardProps> = ({
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              onClick={() => onSelectTab('profil')}
-              className="flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 shadow-xs"
-              title="Lengkapi atau edit data profil kepegawaian Anda"
-            >
-              <UserCheck className="h-3.5 w-3.5 text-sky-600" />
-              <span>Profil &amp; Data Diri</span>
-            </button>
-            {onOpenUbahPassword && (
-              <button
-                onClick={onOpenUbahPassword}
-                className="flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 shadow-xs"
-              >
-                <KeyRound className="h-3.5 w-3.5 text-amber-600" />
-                <span>Ubah Password</span>
-              </button>
-            )}
-            {canSubmitKgb ? (
-              <button
-                onClick={() => onSelectTab('ajukan')}
-                className="flex items-center gap-1.5 rounded-lg bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800 shadow-xs"
-              >
-                <FilePlus2 className="h-4 w-4" />
-                <span>Ajukan Permohonan KGB</span>
-              </button>
-            ) : (
-              <button
-                onClick={() => {
-                  if (ongoingSubmission) onViewPengajuan(ongoingSubmission);
-                  onSelectTab('riwayat');
-                }}
-                className="flex items-center gap-1.5 rounded-lg border border-amber-300 bg-amber-50 px-3.5 py-2 text-xs font-semibold text-amber-900 hover:bg-amber-100 shadow-xs"
-                title="Pengajuan KGB sebelumnya sedang dalam proses. Klik untuk melihat perkembangan."
-              >
-                <Clock className="h-4 w-4 text-amber-600" />
-                <span>Pengajuan Sedang Berjalan</span>
-              </button>
-            )}
-          </div>
         </div>
       </div>
 

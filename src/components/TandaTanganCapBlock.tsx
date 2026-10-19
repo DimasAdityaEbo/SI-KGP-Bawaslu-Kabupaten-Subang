@@ -12,6 +12,8 @@ interface TandaTanganCapBlockProps {
   align?: 'left' | 'center' | 'right';
   isCompact?: boolean;
   className?: string;
+  hideCap?: boolean;
+  hideSignature?: boolean;
 
   // Dual Signatures support
   mode?: 'auto' | 'dua_pejabat' | 'pimpinan_saja' | 'admin_saja';
@@ -30,6 +32,8 @@ export const TandaTanganCapBlock: React.FC<TandaTanganCapBlockProps> = ({
   align = 'right',
   isCompact = false,
   className = '',
+  hideCap = false,
+  hideSignature = false,
   mode = 'auto',
   showDualSignatures,
   leftTitle,
@@ -82,8 +86,8 @@ export const TandaTanganCapBlock: React.FC<TandaTanganCapBlockProps> = ({
       ? mode
       : cfg.modeTampilanDokumen || 'pimpinan_saja';
 
-  const showPimpinanTtd = cfg.tampilkanTandaTangan && !!cfg.tandaTanganUrl;
-  const showCap = cfg.tampilkanCap && !!cfg.capUrl;
+  const showPimpinanTtd = !hideSignature && cfg.tampilkanTandaTangan && !!cfg.tandaTanganUrl;
+  const showCap = !hideCap && cfg.tampilkanCap && !!cfg.capUrl;
   const pimpinanTtdWidth = cfg.tandaTanganWidthPx || 140;
   const capWidth = cfg.capWidthPx || 120;
   const capOpacity = cfg.opacityCap ?? 0.88;
@@ -200,11 +204,11 @@ export const TandaTanganCapBlock: React.FC<TandaTanganCapBlockProps> = ({
                     </div>
                   )}
                 </div>
-              ) : (
+              ) : !hideSignature ? (
                 <div className="h-16 flex items-center justify-center text-slate-400 italic text-[11px]">
-                  [Tanda Tangan &amp; Cap Digital]
+                  {hideCap ? '[Tanda Tangan Digital]' : '[Tanda Tangan & Cap Digital]'}
                 </div>
-              )}
+              ) : null}
             </div>
 
             {/* Nama & NIP Pimpinan */}

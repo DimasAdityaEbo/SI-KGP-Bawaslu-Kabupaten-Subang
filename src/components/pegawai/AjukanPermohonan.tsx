@@ -86,6 +86,8 @@ export const AjukanPermohonan: React.FC<AjukanPermohonanProps> = ({
   const [fileSkpPrestasi, setFileSkpPrestasi] = useState<File | null>(null);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submissionError, setSubmissionError] = useState<string | null>(null);
+  const [notificationWarning, setNotificationWarning] = useState<string | null>(null);
   const [submittedPengajuan, setSubmittedPengajuan] = useState<PengajuanKGB | null>(null);
   const [printModalOpen, setPrintModalOpen] = useState(false);
   const [activePrintTarget, setActivePrintTarget] = useState<PengajuanKGB | null>(null);
@@ -108,31 +110,32 @@ export const AjukanPermohonan: React.FC<AjukanPermohonanProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    // Guard: Re-verify against fresh storage data to prevent any race condition
-    const freshList = await getPengajuanList();
-    const freshOngoing = freshList.find(
-      (p) => p.pegawaiId === pegawai.id && p.status !== 'disetujui' && p.status !== 'ditolak'
-    );
-    if (freshOngoing) {
-      alert(
-        `Permohonan tidak dapat dikirim.\n\nAnda masih memiliki pengajuan KGB yang sedang dalam proses verifikasi (No. Registrasi: ${freshOngoing.noPengajuan}).\n\nPegawai hanya dapat mengajukan KGB baru setelah pengajuan sebelumnya telah Disetujui atau Ditolak.`
-      );
-      setInternalList(freshList);
-      return;
-    }
-
-    if (!fileSkPangkat) {
-      alert('Harap unggah SK Kenaikan Pangkat terakhir Anda.');
-      return;
-    }
-    if (!fileSkpPrestasi) {
-      alert('Harap unggah Dokumen Penilaian Prestasi Kerja (SKP) terakhir Anda.');
-      return;
-    }
-
     setIsSubmitting(true);
+    setSubmissionError(null);
+    setNotificationWarning(null);
     try {
+      // Re-check against the latest database state to prevent duplicate submissions.
+      const freshList = await getPengajuanList();
+      const freshOngoing = freshList.find(
+        (p) => p.pegawaiId === pegawai.id && p.status !== 'disetujui' && p.status !== 'ditolak'
+      );
+      if (freshOngoing) {
+        setInternalList(freshList);
+        alert(
+          `Permohonan tidak dapat dikirim.\n\nAnda masih memiliki pengajuan KGB yang sedang dalam proses verifikasi (No. Registrasi: ${freshOngoing.noPengajuan}).\n\nPegawai hanya dapat mengajukan KGB baru setelah pengajuan sebelumnya telah Disetujui atau Ditolak.`
+        );
+        return;
+      }
+
+      if (!fileSkPangkat) {
+        alert('Harap unggah SK Kenaikan Pangkat terakhir Anda.');
+        return;
+      }
+      if (!fileSkpPrestasi) {
+        alert('Harap unggah Dokumen Penilaian Prestasi Kerja (SKP) terakhir Anda.');
+        return;
+      }
+
       const ticketNumber = `KGB/BWS-SBG/${new Date().getFullYear()}/${String(
         Math.floor(Math.random() * 900) + 100
       )}`;
@@ -203,15 +206,33 @@ export const AjukanPermohonan: React.FC<AjukanPermohonanProps> = ({
       // Save to storage/Supabase
       await savePengajuan(newPengajuan);
 
-      // Dispatch real-time notification email
-      await sendKgbStatusEmail(newPengajuan, 'dibuat');
-
       setSubmittedPengajuan(newPengajuan);
       setActivePrintTarget(newPengajuan);
       onRefreshData();
+
+      // Notifications are follow-up actions and must not turn a saved submission
+      // into a false failure from the employee's perspective.
+      try {
+        await sendKgbStatusEmail(newPengajuan, 'dibuat');
+        setNotificationWarning(null);
+      } catch (notificationError) {
+        console.error('Pengajuan saved, but notification dispatch failed:', notificationError);
+        setNotificationWarning(
+          notificationError instanceof Error
+            ? `Permohonan sudah tersimpan, tetapi notifikasi gagal dikirim: ${notificationError.message}`
+            : 'Permohonan sudah tersimpan, tetapi notifikasi gagal dikirim.'
+        );
+      }
     } catch (err) {
       console.error(err);
-      alert('Terjadi kesalahan saat menyimpan formulir permohonan.');
+      const message = err instanceof Error ? err.message : String(err);
+      setSubmissionError(
+        message.includes('23503')
+          ? 'Data pegawai belum tersedia pada database Supabase. Minta administrator menyinkronkan data pegawai terlebih dahulu.'
+          : message.includes('42703') || message.includes('does not exist')
+          ? `Skema tabel Supabase belum sesuai. Hubungi administrator untuk menjalankan SQL migrasi database. Detail: ${message}`
+          : `Permohonan gagal disimpan ke database: ${message}`
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -592,6 +613,15 @@ export const AjukanPermohonan: React.FC<AjukanPermohonanProps> = ({
             )}
 
             <form onSubmit={handleSubmit} className="space-y-4 text-xs">
+              {submissionError && (
+                <div
+                  role="alert"
+                  className="flex items-start gap-2.5 rounded-lg border border-red-200 bg-red-50 p-3 text-red-900"
+                >
+                  <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-red-600" />
+                  <p className="leading-relaxed">{submissionError}</p>
+                </div>
+              )}
               {/* Auto-filled Badge Header */}
               <div className="rounded-lg bg-sky-50 border border-sky-200 p-3 text-sky-900 leading-relaxed">
                 <span className="font-bold block text-sky-950">Data Otomatis Terhubung ke Database:</span>
@@ -1032,8 +1062,13 @@ export const AjukanPermohonan: React.FC<AjukanPermohonanProps> = ({
               Nomor Registrasi: <span className="font-mono font-bold text-slate-900">{submittedPengajuan.noPengajuan}</span>
             </p>
             <p className="mt-2 text-xs text-slate-600 leading-relaxed">
-              Email tanda terima dan notifikasi real-time telah dikirimkan ke <strong>{submittedPengajuan.emailPemohon}</strong>. Berkas Anda akan segera diverifikasi oleh tim kepegawaian Bawaslu Subang.
+              Permohonan telah tersimpan. Berkas Anda akan segera diverifikasi oleh tim kepegawaian Bawaslu Subang.
             </p>
+            {notificationWarning && (
+              <p role="status" className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-left text-xs text-amber-900">
+                {notificationWarning}
+              </p>
+            )}
 
             <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-2">
               <button

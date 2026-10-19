@@ -45,7 +45,7 @@ export const SupabaseModal: React.FC<SupabaseModalProps> = ({
   const [copiedSql, setCopiedSql] = useState(false);
   const [copiedMigrationSql, setCopiedMigrationSql] = useState(false);
   const [syncing, setSyncing] = useState(false);
-  const [syncResult, setSyncResult] = useState<string | null>(null);
+  const [syncResult, setSyncResult] = useState<{ success: boolean; message: string } | null>(null);
   const [showSqlPreview, setShowSqlPreview] = useState(false);
 
   useEffect(() => {
@@ -130,9 +130,35 @@ export const SupabaseModal: React.FC<SupabaseModalProps> = ({
   };
 
   const handleCopyMigrationSql = () => {
-    const migrationSql = `ALTER TABLE public.pengajuan_kgb DROP CONSTRAINT IF EXISTS pengajuan_kgb_status_check;
+    const migrationSql = `ALTER TABLE public.pegawai
+  ALTER COLUMN tanggal_lahir DROP NOT NULL,
+  ALTER COLUMN tanggal_pelantikan DROP NOT NULL,
+  ALTER COLUMN jadwal_kgb_berikutnya DROP NOT NULL;
+ALTER TABLE public.pengajuan_kgb
+  ADD COLUMN IF NOT EXISTS dokumen_sk_kgb_diterbitkan JSONB;
+ALTER TABLE public.pengajuan_kgb DROP CONSTRAINT IF EXISTS pengajuan_kgb_status_check;
 ALTER TABLE public.pengajuan_kgb ADD CONSTRAINT pengajuan_kgb_status_check 
-  CHECK (status IN ('menunggu_verifikasi', 'dalam_proses', 'dikirim_ke_provinsi', 'perlu_perbaikan', 'disetujui', 'ditolak'));`;
+  CHECK (status IN ('menunggu_verifikasi', 'dalam_proses', 'dikirim_ke_provinsi', 'perlu_perbaikan', 'disetujui', 'ditolak'));
+
+DO $$
+DECLARE
+  table_name TEXT;
+BEGIN
+  FOREACH table_name IN ARRAY ARRAY['pegawai', 'users', 'pengajuan_kgb', 'notifikasi', 'email_logs'] LOOP
+    IF NOT EXISTS (
+      SELECT 1
+      FROM pg_publication_tables
+      WHERE pubname = 'supabase_realtime'
+        AND schemaname = 'public'
+        AND tablename = table_name
+    ) THEN
+      EXECUTE format('ALTER PUBLICATION supabase_realtime ADD TABLE public.%I', table_name);
+    END IF;
+  END LOOP;
+EXCEPTION
+  WHEN undefined_object THEN
+    RAISE NOTICE 'Publication supabase_realtime tidak ditemukan; aktifkan Realtime secara manual.';
+END $$;`;
     navigator.clipboard.writeText(migrationSql);
     setCopiedMigrationSql(true);
     setTimeout(() => setCopiedMigrationSql(false), 2500);
@@ -143,7 +169,10 @@ ALTER TABLE public.pengajuan_kgb ADD CONSTRAINT pengajuan_kgb_status_check
     const cleanKey = anonKey.trim();
 
     if (!cleanUrl || !cleanKey) {
-      setSyncResult('Harap simpan URL dan Anon Key Supabase terlebih dahulu.');
+      setSyncResult({
+        success: false,
+        message: 'Harap simpan URL dan Anon Key Supabase terlebih dahulu.',
+      });
       return;
     }
 
@@ -224,11 +253,16 @@ ALTER TABLE public.pengajuan_kgb ADD CONSTRAINT pengajuan_kgb_status_check
       const { error: errKgb } = await client.from('pengajuan_kgb').upsert(pengajuanPayload);
       if (errKgb) throw new Error(`Pengajuan: ${errKgb.message}`);
 
-      setSyncResult(
-        `Sukses! Berhasil menyinkronkan ${allPegawai.length} Pegawai, ${allUsers.length} User, dan ${allPengajuan.length} Pengajuan KGB ke Supabase.`
-      );
+      setSyncResult({
+        success: true,
+        message: `Sukses! Berhasil menyinkronkan ${allPegawai.length} Pegawai, ${allUsers.length} User, dan ${allPengajuan.length} Pengajuan KGB ke Supabase.`,
+      });
+      onConfigChanged();
     } catch (err: any) {
-      setSyncResult(`Gagal sinkronisasi data: ${err.message}. Pastikan skema tabel sudah dijalankan di Supabase.`);
+      setSyncResult({
+        success: false,
+        message: `Gagal sinkronisasi data: ${err.message}. Pastikan skema tabel sudah dijalankan di Supabase.`,
+      });
     } finally {
       setSyncing(false);
     }
@@ -269,7 +303,8 @@ ALTER TABLE public.pengajuan_kgb ADD CONSTRAINT pengajuan_kgb_status_check
             <p className="mt-1">
               Aplikasi ini dilengkapi penyimpanan lokal terintegrasi yang selalu aktif dan responsif.
               Saat Anda memasukkan URL & Anon Key dari proyek Supabase Anda, aplikasi akan secara otomatis
-              membaca dan menulis data ke tabel PostgreSQL Supabase secara langsung.
+              membaca dan menulis data ke tabel PostgreSQL Supabase secara langsung. Skrip skema
+              mengaktifkan Realtime untuk tabel data utama agar perubahan dari perangkat lain langsung tampil.
             </p>
           </div>
 
@@ -356,9 +391,19 @@ ALTER TABLE public.pengajuan_kgb ADD CONSTRAINT pengajuan_kgb_status_check
           )}
 
           {syncResult && (
-            <div className="flex items-start gap-2.5 rounded-lg border border-sky-200 bg-sky-50 p-3 text-sky-900">
-              <CheckCircle2 className="h-4 w-4 shrink-0 text-sky-600 mt-0.5" />
-              <div className="leading-relaxed">{syncResult}</div>
+            <div
+              className={`flex items-start gap-2.5 rounded-lg p-3 ${
+                syncResult.success
+                  ? 'border border-sky-200 bg-sky-50 text-sky-900'
+                  : 'border border-red-200 bg-red-50 text-red-900'
+              }`}
+            >
+              {syncResult.success ? (
+                <CheckCircle2 className="h-4 w-4 shrink-0 text-sky-600 mt-0.5" />
+              ) : (
+                <AlertCircle className="h-4 w-4 shrink-0 text-red-600 mt-0.5" />
+              )}
+              <div className="leading-relaxed">{syncResult.message}</div>
             </div>
           )}
 
@@ -404,18 +449,18 @@ ALTER TABLE public.pengajuan_kgb ADD CONSTRAINT pengajuan_kgb_status_check
               </pre>
             )}
 
-            {/* Khusus Migrasi Status Bawaslu Provinsi */}
+            {/* Migrasi untuk database yang sudah berjalan */}
             <div className="mt-3 rounded-lg border border-indigo-200 bg-indigo-50/70 p-3">
               <div className="flex items-center justify-between">
                 <div>
                   <span className="inline-block rounded bg-indigo-100 px-1.5 py-0.5 text-[10px] font-bold text-indigo-800 uppercase tracking-wider mb-1">
-                    Migrasi Status Baru
+                    Migrasi Database
                   </span>
                   <p className="text-xs font-bold text-indigo-950">
-                    Update Constraint Status (Kirim ke Bawaslu Provinsi)
+                    Perbarui Tabel Pegawai, Pengajuan, dan Realtime
                   </p>
                   <p className="text-[11px] text-indigo-700 mt-0.5">
-                    Sistem secara otomatis telah menangani kompatibilitas status. Jika ingin memperbarui constraint langsung di Supabase, jalankan 2 baris perintah SQL ini.
+                    Jalankan SQL ini pada database yang sudah ada agar tanggal pegawai bersifat opsional, menambah kolom dokumen SK terbit, memperbarui status, dan mengaktifkan Realtime.
                   </p>
                 </div>
                 <button

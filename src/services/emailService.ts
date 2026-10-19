@@ -127,7 +127,7 @@ ${params.tmtKgb ? `TMT KGB Disetujui: ${params.tmtKgb}\n` : ''}${params.nextKgbJ
 Anda dapat memantau status secara langsung atau mengunduh lembar tanda terima dan surat pengantar melalui portal resmi SI-KGB Bawaslu Kabupaten Subang.
 
 Sekretariat Bawaslu Kabupaten Subang
-Surel Resmi: kepegawaian@bawaslu-subang.go.id`.trim();
+Surel Resmi: set.subangkab@bawaslu.go.id`.trim();
 }
 
 export function createGmailComposeUrl(toEmail: string, subject: string, bodyText: string): string {

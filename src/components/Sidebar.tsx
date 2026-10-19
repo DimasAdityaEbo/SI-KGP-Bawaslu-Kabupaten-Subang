@@ -9,7 +9,6 @@ import {
   FilePlus2,
   History,
   BookOpen,
-  Database,
   Building2,
   Mail,
   ChevronRight,
@@ -24,7 +23,6 @@ interface SidebarProps {
   onSelectTab: (tab: string) => void;
   pendingCount: number;
   hasOngoingPengajuan?: boolean;
-  onOpenSupabaseModal?: () => void;
   onOpenEmailLogs?: () => void;
   onOpenUbahPassword: () => void;
   onOpenKopSuratModal?: () => void;
@@ -36,7 +34,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onSelectTab,
   pendingCount,
   hasOngoingPengajuan = false,
-  onOpenSupabaseModal,
   onOpenEmailLogs,
   onOpenUbahPassword,
   onOpenKopSuratModal,
@@ -190,18 +187,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
               Integrasi & Utilitas
             </div>
             <div className="space-y-1">
-              {onOpenSupabaseModal && (
-                <button
-                  onClick={onOpenSupabaseModal}
-                  className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <Database className="h-4 w-4 text-emerald-600" />
-                    <span>Koneksi Supabase</span>
-                  </div>
-                  <ChevronRight className="h-3.5 w-3.5 text-slate-400" />
-                </button>
-              )}
               {onOpenEmailLogs && (
                 <button
                   onClick={onOpenEmailLogs}
@@ -237,8 +222,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <Building2 className="h-4 w-4 text-slate-400 shrink-0 mt-0.5" />
           <div className="text-[11px] text-slate-600 leading-relaxed">
             <p className="font-semibold text-slate-800">Bawaslu Kab. Subang</p>
-            <p className="text-slate-500">Jl. Veteran No. 12 Subang, Jawa Barat 41211</p>
-            <p className="mt-1 font-mono text-[10px] text-slate-400">Kode Satker: 686122</p>
+            <p className="text-slate-500"> Jl. Palabuan No.9, Kelurahan Sukamelang, Kecamatan Subang, Kabupaten Subang, Jawa Barat 41211.</p>
+            <p className="mt-1 font-mono text-[10px] text-slate-400">Kode Satker: 686138</p>
           </div>
         </div>
       </div>

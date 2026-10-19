@@ -63,6 +63,7 @@ const VARIABLE_TAGS = [
   { tag: '{JABATAN}', label: 'Jabatan' },
   { tag: '{UNIT_KERJA}', label: 'Unit Kerja / Divisi' },
   { tag: '{TMT_KGB_BARU}', label: 'TMT KGB Baru' },
+  { tag: '{TMT_KGB_FORMAT}', label: 'TMT KGB (Format Tanggal Indonesia)' },
   { tag: '{GAJI_POKOK_LAMA}', label: 'Gaji Pokok Lama' },
   { tag: '{GAJI_POKOK_BARU}', label: 'Gaji Pokok Baru' },
   { tag: '{NOMOR_SURAT}', label: 'Nomor Surat' },
@@ -72,6 +73,7 @@ const VARIABLE_TAGS = [
   { tag: '{NIP_PEJABAT}', label: 'NIP Penandatangan' },
   { tag: '{TAHUN}', label: 'Tahun Berjalan' },
   { tag: '{BULAN}', label: 'Bulan Berjalan' },
+  { tag: '{BULAN_PADDED}', label: 'Bulan (2 Digit)' },
 ];
 
 export const TemplateDokumenView: React.FC<TemplateDokumenViewProps> = ({
@@ -129,9 +131,7 @@ export const TemplateDokumenView: React.FC<TemplateDokumenViewProps> = ({
   // Kop Surat Settings Modal state
   const [isKopModalOpen, setIsKopModalOpen] = useState(false);
   const [kopConfig, setKopConfig] = useState<KopSuratConfig>(getKopSuratConfig());
-
-  // Tanda Tangan & Cap config
-  const [ttdCapConfig, setTtdCapConfig] = useState<TandaTanganCapConfig>(getTandaTanganCapConfig());
+  const [ttdCapConfig] = useState<TandaTanganCapConfig>(getTandaTanganCapConfig());
 
   const showToast = (message: string, type: 'success' | 'info' | 'error' = 'success') => {
     setFeedbackToast({ message, type });
@@ -287,6 +287,7 @@ export const TemplateDokumenView: React.FC<TemplateDokumenViewProps> = ({
 
     const nomorSurat = template.formatNomor
       .replace('{BULAN}', String(now.getMonth() + 1))
+      .replace('{BULAN_PADDED}', String(now.getMonth() + 1).padStart(2, '0'))
       .replace('{TAHUN}', String(now.getFullYear()));
 
     if (!p) {
@@ -303,6 +304,12 @@ export const TemplateDokumenView: React.FC<TemplateDokumenViewProps> = ({
     const gajiBaru = p.gajiPokokTerakhir
       ? (p.gajiPokokTerakhir + 160000).toLocaleString('id-ID')
       : '3.980.000';
+    const tmtKgb = p.jadwalKgbBerikutnya || now.toISOString().split('T')[0];
+    const tmtKgbFormatted = new Date(`${tmtKgb}T00:00:00`).toLocaleDateString('id-ID', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    });
 
     let content = template.isiKonten;
     content = content.replace(/\{NAMA_PEGAWAI\}/g, p.nama);
@@ -310,7 +317,8 @@ export const TemplateDokumenView: React.FC<TemplateDokumenViewProps> = ({
     content = content.replace(/\{PANGKAT_GOLONGAN\}/g, p.golonganPangkat || 'Penata Muda / III/a');
     content = content.replace(/\{JABATAN\}/g, p.jabatan || 'Analis Kepegawaian');
     content = content.replace(/\{UNIT_KERJA\}/g, p.bagianDivisi || 'Sekretariat Bawaslu Kabupaten Subang');
-    content = content.replace(/\{TMT_KGB_BARU\}/g, p.jadwalKgbBerikutnya || now.toISOString().split('T')[0]);
+    content = content.replace(/\{TMT_KGB_BARU\}/g, tmtKgb);
+    content = content.replace(/\{TMT_KGB_FORMAT\}/g, tmtKgbFormatted);
     content = content.replace(/\{GAJI_POKOK_LAMA\}/g, gajiLama);
     content = content.replace(/\{GAJI_POKOK_BARU\}/g, gajiBaru);
     content = content.replace(/\{NOMOR_SURAT\}/g, nomorSurat);
@@ -933,39 +941,63 @@ export const TemplateDokumenView: React.FC<TemplateDokumenViewProps> = ({
                 className="mx-auto max-w-[210mm] bg-white p-8 sm:p-12 shadow border border-slate-200 text-slate-900 text-sm leading-relaxed print:p-0 print:border-none print:shadow-none"
               >
                 {/* KOP SURAT RESMI DINAMIS */}
-                <KopSuratHeader config={kopConfig} />
+                <KopSuratHeader
+                  config={
+                    previewTemplate.kategori === 'surat_pengantar'
+                      ? {
+                          ...kopConfig,
+                          alamatLengkap: 'Jl. Palabuan No. 9, Kel. Sukamelang, Kec. Subang, 41211',
+                          teleponFaks: 'Telepon (0260) 4242353',
+                          emailWebsite: 'Email: set.subangkab@bawaslu.go.id',
+                        }
+                      : kopConfig
+                  }
+                />
 
                 {/* JUDUL DOKUMEN & NOMOR */}
                 {(() => {
                   const rendered = renderDocumentText(previewTemplate, activeSamplePegawai);
+                  const isSuratPengantar = previewTemplate.kategori === 'surat_pengantar';
+                  const contentLines = rendered.renderedContent.split(/\r?\n/);
+                  const dateLine = isSuratPengantar ? contentLines.shift() : undefined;
+                  const bodyContent = isSuratPengantar
+                    ? contentLines.join('\n').trimStart()
+                    : rendered.renderedContent;
                   return (
                     <div className="space-y-6 text-xs text-slate-900">
-                      <div className="text-center mb-6">
-                        <h4 className="font-bold underline text-sm uppercase tracking-wide">
-                          {previewTemplate.judulDokumen}
-                        </h4>
-                        <p className="text-xs text-slate-600 mt-1 font-mono">
-                          Nomor: {rendered.nomorSurat}
-                        </p>
-                      </div>
+                      {!isSuratPengantar && (
+                        <div className="text-center mb-6">
+                          <h4 className="font-bold underline text-sm uppercase tracking-wide">
+                            {previewTemplate.judulDokumen}
+                          </h4>
+                          <p className="text-xs text-slate-600 mt-1 font-mono">
+                            Nomor: {rendered.nomorSurat}
+                          </p>
+                        </div>
+                      )}
 
                       {/* ISI KONTEN TERRENDER */}
-                      <div className="whitespace-pre-line leading-relaxed text-justify space-y-3 font-sans">
-                        {rendered.renderedContent}
+                      <div className="leading-relaxed font-sans">
+                        {dateLine !== undefined && (
+                          <p className="mb-6 text-right">{dateLine}</p>
+                        )}
+                        <div className="whitespace-pre-line text-justify">
+                          {bodyContent}
+                        </div>
                       </div>
 
-                      {/* TANDA TANGAN */}
-                      <div className="mt-12 flex justify-end">
-                        <TandaTanganCapBlock
-                          config={ttdCapConfig}
-                          tanggalText={rendered.tanggalFormatted}
-                          customNamaPejabat={previewTemplate.penandatanganNama}
-                          customJabatan={previewTemplate.penandatanganJabatan}
-                          customNip={previewTemplate.penandatanganNip}
-                          align="right"
-                          mode="pimpinan_saja"
-                        />
-                      </div>
+                      <TandaTanganCapBlock
+                        config={ttdCapConfig}
+                        tanggalText={rendered.tanggalFormatted}
+                        customNamaPejabat={previewTemplate.penandatanganNama}
+                        customJabatan={previewTemplate.penandatanganJabatan}
+                        customNip={previewTemplate.penandatanganNip}
+                        align="right"
+                        mode="pimpinan_saja"
+                        hideCap
+                        hideSignature
+                        className="mt-10"
+                      />
 
                       {/* TEMBUSAN */}
                       {previewTemplate.tembusan && previewTemplate.tembusan.length > 0 && (

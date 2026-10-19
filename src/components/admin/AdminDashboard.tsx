@@ -16,7 +16,6 @@ import {
   Copy,
   Check,
   BellRing,
-  FileCode,
 } from 'lucide-react';
 import { Pegawai, PengajuanKGB, PengajuanStatus, EmailDispatchLog } from '../../types';
 import {
@@ -191,28 +190,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           <p className="text-xs text-slate-500 mt-0.5">
             Ringkasan pengajuan Kenaikan Gaji Berkala (KGB), monitoring jadwal terdekat, dan statistik pelayanan.
           </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            onClick={() => onSelectTab('template')}
-            className="flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition"
-          >
-            <FileCode className="h-3.5 w-3.5 text-slate-500" />
-            <span>Template Dokumen</span>
-          </button>
-          <button
-            onClick={() => onSelectTab('pegawai')}
-            className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition"
-          >
-            Kelola Pegawai
-          </button>
-          <button
-            onClick={() => onSelectTab('pengajuan')}
-            className="flex items-center gap-1.5 rounded-lg bg-slate-900 px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-slate-800 transition shadow-xs"
-          >
-            <FileText className="h-3.5 w-3.5" />
-            <span>Lihat Pengajuan</span>
-          </button>
         </div>
       </div>
 

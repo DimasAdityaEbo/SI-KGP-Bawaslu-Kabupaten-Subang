@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   User,
   Pegawai,
@@ -16,7 +16,7 @@ import {
   markNotificationAsRead,
   markAllNotificationsAsRead,
 } from './services/storage';
-import { getSavedSupabaseConfig } from './services/supabase';
+import { getSavedSupabaseConfig, subscribeToSupabaseChanges } from './services/supabase';
 import { Header } from './components/Header';
 import { Sidebar } from './components/Sidebar';
 import { LoginView } from './components/auth/LoginView';
@@ -31,7 +31,6 @@ import { AjukanPermohonan } from './components/pegawai/AjukanPermohonan';
 import { RiwayatPengajuan } from './components/pegawai/RiwayatPengajuan';
 import { RegulasiView } from './components/pegawai/RegulasiView';
 import { ProfilPegawaiView } from './components/pegawai/ProfilPegawaiView';
-import { SupabaseModal } from './components/SupabaseModal';
 import { EmailLogModal } from './components/EmailLogModal';
 import { NotificationModal } from './components/NotificationModal';
 import { UbahPasswordModal } from './components/UbahPasswordModal';
@@ -53,14 +52,13 @@ export default function App() {
   const [selectedPengajuan, setSelectedPengajuan] = useState<PengajuanKGB | null>(null);
 
   // Modals
-  const [isSupabaseModalOpen, setIsSupabaseModalOpen] = useState(false);
   const [isEmailLogsModalOpen, setIsEmailLogsModalOpen] = useState(false);
   const [isNotificationsModalOpen, setIsNotificationsModalOpen] = useState(false);
   const [isUbahPasswordModalOpen, setIsUbahPasswordModalOpen] = useState(false);
   const [isGlobalKopModalOpen, setIsGlobalKopModalOpen] = useState(false);
 
   // Load Data
-  const loadAllData = async () => {
+  const loadAllData = useCallback(async () => {
     try {
       const [pList, kgbList, uList, nList, eList] = await Promise.all([
         getPegawaiList(),
@@ -78,21 +76,45 @@ export default function App() {
       setSupabaseConfig(getSavedSupabaseConfig());
 
       // If user is logged in, sync currentUser in case updated
-      if (currentUser) {
+      setCurrentUser((currentUser) => {
+        if (!currentUser) return currentUser;
         const refreshedUser = uList.find((u) => u.id === currentUser.id);
-        if (refreshedUser) setCurrentUser(refreshedUser);
-      }
+        return refreshedUser || currentUser;
+      });
     } catch (e) {
       console.error('Error loading data:', e);
     }
-  };
+  }, []);
 
   useEffect(() => {
     loadAllData();
     // Halaman pertama yang tampil saat membuka aplikasi selalu halaman login
     setCurrentUser(null);
     localStorage.removeItem('sikgb_session_user');
-  }, []);
+  }, [loadAllData]);
+
+  useEffect(() => {
+    let refreshTimer: number | undefined;
+    const refresh = () => {
+      if (refreshTimer !== undefined) window.clearTimeout(refreshTimer);
+      refreshTimer = window.setTimeout(() => {
+        void loadAllData();
+      }, 200);
+    };
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') refresh();
+    };
+    const unsubscribe = subscribeToSupabaseChanges(refresh);
+    window.addEventListener('focus', refresh);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      unsubscribe();
+      window.removeEventListener('focus', refresh);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      if (refreshTimer !== undefined) window.clearTimeout(refreshTimer);
+    };
+  }, [loadAllData, supabaseConfig.url, supabaseConfig.anonKey]);
 
   const handleLogin = (user: User) => {
     setCurrentUser(user);
@@ -175,11 +197,6 @@ export default function App() {
             : notifications.filter((n) => n.userId === currentUser.pegawaiId || n.userId === currentUser.id)
         }
         onOpenNotifications={() => setIsNotificationsModalOpen(true)}
-        onOpenSupabaseModal={() => setIsSupabaseModalOpen(true)}
-        onOpenEmailLogs={() => setIsEmailLogsModalOpen(true)}
-        onOpenUbahPassword={() => setIsUbahPasswordModalOpen(true)}
-        supabaseConnected={supabaseConfig.isConnected}
-        totalEmailsSent={emailLogs.length}
       />
 
       <div className="flex flex-1">
@@ -193,9 +210,7 @@ export default function App() {
           }}
           pendingCount={pendingCount}
           hasOngoingPengajuan={hasPegawaiOngoingPengajuan}
-          onOpenSupabaseModal={currentUser.role === 'admin' ? () => setIsSupabaseModalOpen(true) : undefined}
           onOpenEmailLogs={currentUser.role === 'admin' ? () => setIsEmailLogsModalOpen(true) : undefined}
-          onOpenUbahPassword={() => setIsUbahPasswordModalOpen(true)}
           onOpenKopSuratModal={currentUser.role === 'admin' ? () => setIsGlobalKopModalOpen(true) : undefined}
         />
 
@@ -271,7 +286,6 @@ export default function App() {
                     setSelectedPengajuan(item);
                     setCurrentTab('riwayat');
                   }}
-                  onOpenUbahPassword={() => setIsUbahPasswordModalOpen(true)}
                 />
               )}
 
@@ -315,15 +329,6 @@ export default function App() {
       </div>
 
       {/* MODALS */}
-      <SupabaseModal
-        isOpen={isSupabaseModalOpen}
-        onClose={() => setIsSupabaseModalOpen(false)}
-        onConfigChanged={loadAllData}
-        allPegawai={pegawaiList}
-        allUsers={usersList}
-        allPengajuan={pengajuanList}
-      />
-
       <EmailLogModal
         isOpen={isEmailLogsModalOpen}
         onClose={() => setIsEmailLogsModalOpen(false)}

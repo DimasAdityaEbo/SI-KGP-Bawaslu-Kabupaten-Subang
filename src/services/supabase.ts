@@ -73,6 +73,7 @@ export function saveSupabaseConfig(url: string, anonKey: string): void {
 }
 
 let supabaseInstance: SupabaseClient | null = null;
+let supabaseInstanceConfig: { url: string; anonKey: string } | null = null;
 
 export function getSupabaseClient(): SupabaseClient | null {
   const config = getSavedSupabaseConfig();
@@ -80,9 +81,18 @@ export function getSupabaseClient(): SupabaseClient | null {
     return null;
   }
 
+  if (
+    !supabaseInstanceConfig ||
+    supabaseInstanceConfig.url !== config.url ||
+    supabaseInstanceConfig.anonKey !== config.anonKey
+  ) {
+    supabaseInstance = null;
+  }
+
   if (!supabaseInstance) {
     try {
       supabaseInstance = createClient(config.url, config.anonKey);
+      supabaseInstanceConfig = { url: config.url, anonKey: config.anonKey };
     } catch (e) {
       console.warn('Could not initialize Supabase client:', e);
       return null;
@@ -93,6 +103,31 @@ export function getSupabaseClient(): SupabaseClient | null {
 
 export function resetSupabaseClient(): void {
   supabaseInstance = null;
+  supabaseInstanceConfig = null;
+}
+
+export function subscribeToSupabaseChanges(onChange: () => void): () => void {
+  const supabase = getSupabaseClient();
+  if (!supabase) return () => undefined;
+
+  const channel = supabase.channel('sikgb-data-sync');
+  for (const table of ['pegawai', 'users', 'pengajuan_kgb', 'notifikasi', 'email_logs']) {
+    channel.on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table },
+      onChange
+    );
+  }
+
+  channel.subscribe((status) => {
+    if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+      console.error(`Supabase realtime subscription failed: ${status}`);
+    }
+  });
+
+  return () => {
+    void supabase.removeChannel(channel);
+  };
 }
 
 // SQL Schema for Supabase Setup
@@ -105,7 +140,7 @@ CREATE TABLE IF NOT EXISTS public.pegawai (
   id TEXT PRIMARY KEY,
   nama TEXT NOT NULL,
   tempat_lahir TEXT NOT NULL,
-  tanggal_lahir DATE NOT NULL,
+  tanggal_lahir DATE,
   jabatan TEXT NOT NULL,
   nip TEXT UNIQUE NOT NULL,
   jenis_kelamin TEXT NOT NULL,
@@ -115,8 +150,8 @@ CREATE TABLE IF NOT EXISTS public.pegawai (
   alamat_rumah TEXT NOT NULL,
   email TEXT NOT NULL,
   agama TEXT NOT NULL,
-  tanggal_pelantikan DATE NOT NULL,
-  jadwal_kgb_berikutnya DATE NOT NULL,
+  tanggal_pelantikan DATE,
+  jadwal_kgb_berikutnya DATE,
   gaji_pokok_terakhir NUMERIC DEFAULT 0,
   golongan_pangkat TEXT,
   pangkat_terakhir TEXT,
@@ -167,7 +202,8 @@ CREATE TABLE IF NOT EXISTS public.pengajuan_kgb (
   tanggal_pengajuan TIMESTAMPTZ DEFAULT NOW(),
   tanggal_verifikasi TIMESTAMPTZ,
   nomor_sk_kgb_diterbitkan TEXT,
-  tanggal_sk_diterbitkan DATE
+  tanggal_sk_diterbitkan DATE,
+  dokumen_sk_kgb_diterbitkan JSONB
 );
 
 -- 4. Tabel Notifikasi
@@ -262,7 +298,34 @@ CREATE POLICY "Akses anon penuh kop_surat" ON public.pengaturan_kop_surat FOR AL
 CREATE POLICY "Akses anon penuh ttd_cap" ON public.pengaturan_ttd_cap FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Akses anon penuh templates" ON public.template_dokumen FOR ALL USING (true) WITH CHECK (true);
 
+-- Aktifkan sinkronisasi realtime untuk tabel data utama.
+DO $$
+DECLARE
+  table_name TEXT;
+BEGIN
+  FOREACH table_name IN ARRAY ARRAY['pegawai', 'users', 'pengajuan_kgb', 'notifikasi', 'email_logs'] LOOP
+    IF NOT EXISTS (
+      SELECT 1
+      FROM pg_publication_tables
+      WHERE pubname = 'supabase_realtime'
+        AND schemaname = 'public'
+        AND tablename = table_name
+    ) THEN
+      EXECUTE format('ALTER PUBLICATION supabase_realtime ADD TABLE public.%I', table_name);
+    END IF;
+  END LOOP;
+EXCEPTION
+  WHEN undefined_object THEN
+    RAISE NOTICE 'Publication supabase_realtime tidak ditemukan; aktifkan Realtime secara manual.';
+END $$;
+
 -- Skrip migrasi jika tabel pengajuan_kgb sudah ada sebelumnya:
+ALTER TABLE public.pegawai
+  ALTER COLUMN tanggal_lahir DROP NOT NULL,
+  ALTER COLUMN tanggal_pelantikan DROP NOT NULL,
+  ALTER COLUMN jadwal_kgb_berikutnya DROP NOT NULL;
+ALTER TABLE public.pengajuan_kgb
+  ADD COLUMN IF NOT EXISTS dokumen_sk_kgb_diterbitkan JSONB;
 ALTER TABLE public.pengajuan_kgb DROP CONSTRAINT IF EXISTS pengajuan_kgb_status_check;
 ALTER TABLE public.pengajuan_kgb ADD CONSTRAINT pengajuan_kgb_status_check 
   CHECK (status IN ('menunggu_verifikasi', 'dalam_proses', 'dikirim_ke_provinsi', 'perlu_perbaikan', 'disetujui', 'ditolak'));

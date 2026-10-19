@@ -61,6 +61,8 @@ export const KelolaPegawai: React.FC<KelolaPegawaiProps> = ({
   const [selectedPegawai, setSelectedPegawai] = useState<Pegawai | null>(null);
   const [detailModalPegawai, setDetailModalPegawai] = useState<Pegawai | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [migrationCopyMessage, setMigrationCopyMessage] = useState<string | null>(null);
 
   // Success modal for created user credentials
   const [createdAccountInfo, setCreatedAccountInfo] = useState<{
@@ -69,6 +71,10 @@ export const KelolaPegawai: React.FC<KelolaPegawaiProps> = ({
     nip: string;
   } | null>(null);
   const [copiedInfo, setCopiedInfo] = useState(false);
+
+  const optionalDatesMigrationSql = `ALTER TABLE public.pegawai
+  ALTER COLUMN tanggal_lahir DROP NOT NULL,
+  ALTER COLUMN tanggal_pelantikan DROP NOT NULL;`;
 
   // Form State: Hanya Nama dan NIP yang wajib bagi Admin
   const initialForm: Partial<Pegawai> = {
@@ -96,13 +102,27 @@ export const KelolaPegawai: React.FC<KelolaPegawaiProps> = ({
   const handleOpenAdd = () => {
     setSelectedPegawai(null);
     setFormData(initialForm);
+    setSaveError(null);
+    setMigrationCopyMessage(null);
     setIsModalOpen(true);
   };
 
   const handleOpenEdit = (p: Pegawai) => {
     setSelectedPegawai(p);
     setFormData(p);
+    setSaveError(null);
+    setMigrationCopyMessage(null);
     setIsModalOpen(true);
+  };
+
+  const handleCopyDateMigration = async () => {
+    try {
+      await navigator.clipboard.writeText(optionalDatesMigrationSql);
+      setMigrationCopyMessage('SQL berhasil disalin. Jalankan di Supabase SQL Editor, lalu coba simpan pegawai kembali.');
+    } catch (err) {
+      console.error('Gagal menyalin SQL migrasi:', err);
+      setMigrationCopyMessage('SQL tidak dapat disalin otomatis. Salin perintah yang tampil di bawah secara manual.');
+    }
   };
 
   const handleDelete = async (id: string, nama: string) => {
@@ -120,6 +140,7 @@ export const KelolaPegawai: React.FC<KelolaPegawaiProps> = ({
     }
 
     setIsSaving(true);
+    setSaveError(null);
     try {
       const isNew = !selectedPegawai;
       const currentUsers = await getUsersList();
@@ -201,6 +222,17 @@ export const KelolaPegawai: React.FC<KelolaPegawaiProps> = ({
       onRefreshData();
     } catch (err) {
       console.error(err);
+      const message = err instanceof Error ? err.message : String(err);
+      const requiresDateMigration =
+        message.includes('null value in column "tanggal_lahir"') ||
+        message.includes('null value in column "tanggal_pelantikan"');
+      setSaveError(
+        requiresDateMigration
+          ? 'Database Supabase masih mewajibkan tanggal lahir atau tanggal pelantikan. Jalankan migrasi di bawah satu kali agar kedua tanggal dapat dikosongkan.'
+          : `Data pegawai gagal disimpan: ${message}`
+      );
+      setMigrationCopyMessage(null);
+      onRefreshData();
     } finally {
       setIsSaving(false);
     }
@@ -471,6 +503,36 @@ export const KelolaPegawai: React.FC<KelolaPegawaiProps> = ({
                   </div>
                 </div>
 
+                {saveError && (
+                  <div
+                    role="alert"
+                    className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-800 sm:col-span-2"
+                  >
+                    <Info className="mt-0.5 h-4 w-4 shrink-0" />
+                    <div className="min-w-0 flex-1">
+                      <p>{saveError}</p>
+                      {(saveError.includes('Database Supabase masih mewajibkan tanggal') ||
+                        saveError.includes('SQL tidak dapat disalin otomatis')) && (
+                        <>
+                          <pre className="mt-2 overflow-x-auto rounded bg-white p-2 font-mono text-[11px] text-slate-800">
+                            {optionalDatesMigrationSql}
+                          </pre>
+                          <button
+                            type="button"
+                            onClick={handleCopyDateMigration}
+                            className="mt-2 rounded-md bg-red-700 px-2.5 py-1.5 font-semibold text-white hover:bg-red-800"
+                          >
+                            Salin SQL Perbaikan
+                          </button>
+                          {migrationCopyMessage && (
+                            <p className="mt-1 text-[11px]">{migrationCopyMessage}</p>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  </div>
+                )}
+
                 {/* Nama Pegawai */}
                 <div className="sm:col-span-2">
                   <label className="block font-semibold text-slate-800 mb-1">
@@ -533,18 +595,19 @@ export const KelolaPegawai: React.FC<KelolaPegawaiProps> = ({
                   />
                 </div>
 
-                {/* Tanggal Lahir */}
-                <div>
-                  <label className="block font-semibold text-slate-800 mb-1">
-                    Tanggal Lahir <span className="text-slate-400 font-normal">(Opsional)</span>
-                  </label>
-                  <input
-                    type="date"
-                    value={formData.tanggalLahir || ''}
-                    onChange={(e) => setFormData({ ...formData, tanggalLahir: e.target.value })}
-                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-900 focus:border-slate-900 focus:outline-none"
-                  />
-                </div>
+                {selectedPegawai && (
+                  <div>
+                    <label className="block font-semibold text-slate-800 mb-1">
+                      Tanggal Lahir <span className="text-slate-400 font-normal">(Opsional)</span>
+                    </label>
+                    <input
+                      type="date"
+                      value={formData.tanggalLahir || ''}
+                      onChange={(e) => setFormData({ ...formData, tanggalLahir: e.target.value })}
+                      className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-900 focus:border-slate-900 focus:outline-none"
+                    />
+                  </div>
+                )}
 
                 {/* Jabatan */}
                 <div>
@@ -614,18 +677,19 @@ export const KelolaPegawai: React.FC<KelolaPegawaiProps> = ({
                   </select>
                 </div>
 
-                {/* Tanggal Pelantikan */}
-                <div>
-                  <label className="block font-semibold text-slate-800 mb-1">
-                    Tanggal Pelantikan <span className="text-slate-400 font-normal">(Opsional)</span>
-                  </label>
-                  <input
-                    type="date"
-                    value={formData.tanggalPelantikan || ''}
-                    onChange={(e) => setFormData({ ...formData, tanggalPelantikan: e.target.value })}
-                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-900 focus:border-slate-900 focus:outline-none"
-                  />
-                </div>
+                {selectedPegawai && (
+                  <div>
+                    <label className="block font-semibold text-slate-800 mb-1">
+                      Tanggal Pelantikan <span className="text-slate-400 font-normal">(Opsional)</span>
+                    </label>
+                    <input
+                      type="date"
+                      value={formData.tanggalPelantikan || ''}
+                      onChange={(e) => setFormData({ ...formData, tanggalPelantikan: e.target.value })}
+                      className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-900 focus:border-slate-900 focus:outline-none"
+                    />
+                  </div>
+                )}
 
                 {/* Jadwal Pengajuan Kenaikan Gaji Berkala (KGB) */}
                 <div className="rounded-lg bg-amber-50/70 p-3 border border-amber-200">

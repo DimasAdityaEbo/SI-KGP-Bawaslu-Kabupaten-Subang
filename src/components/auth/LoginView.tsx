@@ -46,7 +46,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin, usersList }) => {
         </div>
 
         <h1 className="mt-5 text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">
-          SI-KGB BAWASLU SUBANG
+          SIAGA-KGB BAWASLU SUBANG
         </h1>
         <p className="mt-1 text-xs text-slate-600 font-medium">
           Sistem Informasi Pengajuan &amp; Pelayanan Kenaikan Gaji Berkala (KGB)

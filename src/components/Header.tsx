@@ -39,7 +39,7 @@ export const Header: React.FC<HeaderProps> = ({
         <div>
           <div className="flex items-center gap-2">
             <span className="text-base font-bold tracking-tight text-slate-900 sm:text-lg">
-              SI-KGB
+              SIAGA-KGB
             </span>
             <span className="hidden rounded bg-slate-100 px-1.5 py-0.5 text-[11px] font-semibold text-slate-700 sm:inline-block border border-slate-200">
               BAWASLU SUBANG
